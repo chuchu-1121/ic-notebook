@@ -729,15 +729,11 @@ async function doLogin() {
       delete oldUsers[input];
       localStorage.setItem('ic_users_legacy', JSON.stringify(oldUsers));
       currentUser = nu;
-      try {
-        loadUserData();
-        clearAuthForms();
-        updateHeader();
-        showView('dash');
-        switchDashTab('knowledge');
-      } catch(e) {
-        alert('Migration error: ' + e.message);
-      }
+      loadUserData();
+      clearAuthForms();
+      updateHeader();
+      showView('dash');
+      switchDashTab('knowledge');
       return;
     }
     err.classList.add('show'); return;
@@ -751,15 +747,11 @@ async function doLogin() {
     err.classList.add('show'); return;
   }
   currentUser = u;
-  try {
-    loadUserData();
-    clearAuthForms();
-    updateHeader();
-    showView('dash');
-    switchDashTab('knowledge');
-  } catch(e) {
-    alert('Login error: ' + e.message);
-  }
+  loadUserData();
+  clearAuthForms();
+  updateHeader();
+  showView('dash');
+  switchDashTab('knowledge');
 }
 
 function doLogout() {
@@ -1275,8 +1267,8 @@ function syncAllPublic() {
     if (!userData.knowledgeCats.includes(pk.cat)) userData.knowledgeCats.push(pk.cat);
   });
   saveUserData();
-  alert('已同步 ' + count + ' 条到个人知识库。knowledge数组长度: ' + userData.knowledge.length);
   renderPublic();
+  alert('已同步 ' + count + ' 条到个人知识库');
 }
 
 function updateSyncBtn() {
@@ -1309,8 +1301,8 @@ function syncSelectedPublic() {
     }
   });
   saveUserData();
-  alert('已同步 ' + count + ' 条到个人知识库。knowledge数组长度: ' + userData.knowledge.length);
   renderPublic();
+  alert('已同步 ' + count + ' 条到个人知识库');
 }
 
 // ============================================================
