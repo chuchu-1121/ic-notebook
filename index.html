@@ -772,6 +772,7 @@ function clearAuthForms() {
 }
 
 function loadUserData() {
+  alert('loadUserData called, systemId=' + (currentUser ? currentUser.systemId : 'null'));
   const key = 'ic_data_' + currentUser.systemId;
   try {
     const d = JSON.parse(localStorage.getItem(key) || '{}');
