@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IC Notebook · 知识库</title>
+<script>// Apply saved theme before page renders to prevent flash
+(function(){var t=localStorage.getItem('theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');})()</script>
 <style>
 /* ===== CSS Variables ===== */
 :root {
@@ -330,6 +332,29 @@ body {
 .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
 .summary { font-size: 0.82rem; color: var(--text-dim); }
 
+/* ===== Fade Zone ===== */
+.fade-zone {
+  position: relative; margin-top: -80px; padding-top: 80px;
+  text-align: center; pointer-events: none;
+}
+.fade-zone .fade-gradient {
+  position: absolute; top: 0; left: 0; right: 0; height: 100%;
+  background: linear-gradient(transparent 0%, var(--bg) 60%);
+  pointer-events: none;
+}
+.fade-zone .fade-content {
+  position: relative; z-index: 1; padding: 24px 0 16px;
+  pointer-events: auto;
+}
+.fade-zone .fade-lock { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 12px; }
+.fade-zone .fade-btn {
+  display: inline-block; padding: 8px 28px; border-radius: 20px;
+  background: var(--accent2); color: #fff; font-weight: 600; font-size: 0.85rem;
+  cursor: pointer; border: none; text-decoration: none;
+  transition: opacity 0.2s;
+}
+.fade-zone .fade-btn:hover { opacity: 0.85; }
+
 /* ===== Empty State ===== */
 .empty-state { text-align: center; padding: 50px 20px; color: var(--text-dim); }
 .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
@@ -365,6 +390,7 @@ body {
         <div class="user-dropdown" id="userDropdown">
           <div class="dd-item" onclick="showView('dash');switchDashTab('knowledge');hideUserMenu()">📂 个人空间</div>
           <div class="dd-item" onclick="hideUserMenu();openAvatarModal()">🖼️ 设置头像</div>
+          <div class="dd-item" onclick="hideUserMenu();openSettingsModal()">⚙️ 账号设置</div>
           <div class="dd-item" onclick="toggleTheme();hideUserMenu()">🌓 切换主题</div>
           <div class="dd-item" onclick="doLogout()">🚪 退出登录</div>
         </div>
@@ -405,7 +431,7 @@ body {
       <div class="sub">访问你的个人知识库</div>
       <form onsubmit="doLogin();return false">
       <div class="error" id="loginError">用户名或密码错误</div>
-      <div class="field"><label>账号 ID 或显示名</label><input type="text" id="loginUser" placeholder="输入账号 ID 或显示名" autocomplete="off"></div>
+      <div class="field"><label>账号 ID</label><input type="text" id="loginUser" placeholder="输入注册时设置的账号 ID" autocomplete="off"></div>
       <div class="field"><label>密码</label><input type="password" id="loginPass" placeholder="输入密码" autocomplete="off"></div>
       <button class="btn btn-primary" type="submit">登录</button>
       </form>
@@ -417,7 +443,7 @@ body {
       <div class="sub">创建你的个人知识库</div>
       <form onsubmit="doRegister();return false">
       <div class="error" id="regError">该 ID 已被使用</div>
-      <div class="field"><label>账号 ID</label><input type="text" id="regUser" placeholder="6-20 位字母、数字、下划线（用于登录）" autocomplete="off"></div>
+      <div class="field"><label>账号 ID</label><input type="text" id="regUser" placeholder="6-20 位字母、数字、下划线，注册后不可修改" autocomplete="off"></div>
       <div class="field"><label>显示名</label><input type="text" id="regDisplayName" placeholder="1-20 位，支持中文，仅自己可见" autocomplete="off"></div>
       <div class="field"><label>密码</label><input type="password" id="regPass" placeholder="至少 6 位" autocomplete="new-password"></div>
       <div class="field"><label>确认密码</label><input type="password" id="regPass2" placeholder="再次输入密码" autocomplete="new-password"></div>
@@ -478,6 +504,20 @@ body {
     <div class="modal-actions">
       <button class="btn" onclick="closeAvatarModal()">取消</button>
       <button class="btn btn-primary" onclick="saveAvatar()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay hidden" id="settingsOverlay">
+  <div class="modal">
+    <h3>⚙️ 账号设置</h3>
+    <div class="field"><label>账号 ID</label><input type="text" id="settingsId" disabled style="opacity:0.6"> <span style="font-size:0.75rem;color:var(--text-dim)">（不可修改）</span></div>
+    <div class="field"><label>显示名</label><input type="text" id="settingsName" placeholder="1-20 位"></div>
+    <div class="field"><label>系统编号</label><input type="text" id="settingsSysId" disabled style="opacity:0.6"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeSettingsModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveSettings()">保存</button>
     </div>
   </div>
 </div>
@@ -644,8 +684,8 @@ async function doLogin() {
   err.classList.remove('show');
   const users = getUsers();
   const newHash = await hash(p);
-  // Try to find user by ID first, then by display name
-  let matches = users.filter(u => u.id === input || u.displayName === input);
+  // Try to find user by ID
+  let matches = users.filter(u => u.id === input);
   if (matches.length === 0) {
     // Check old format (migration)
     const oldUsers = legacyGetUsers();
@@ -654,10 +694,8 @@ async function doLogin() {
       const nu = { systemId: generateSystemId(), id: input.toLowerCase().replace(/[^a-z0-9_]/g,'_').substring(0,20) || 'user_' + Date.now().toString(36), displayName: input, passwordHash: newHash, avatar: null, createdAt: Date.now() };
       users.push(nu);
       saveUsers(users);
-      // Migrate old data
       const oldData = localStorage.getItem('ic_data_' + input);
       if (oldData) { localStorage.setItem('ic_data_' + nu.systemId, oldData); localStorage.removeItem('ic_data_' + input); }
-      // Remove old user entry
       delete oldUsers[input];
       localStorage.setItem('ic_users_legacy', JSON.stringify(oldUsers));
       currentUser = nu;
@@ -670,24 +708,15 @@ async function doLogin() {
     }
     err.classList.add('show'); return;
   }
-  // Filter by password
-  let found = null;
-  for (const u of matches) {
-    if (u.passwordHash === newHash) { found = u; break; }
-    if (u.passwordHash === oldHash(p)) { u.passwordHash = newHash; saveUsers(users); found = u; break; }
+  const u = matches[0];
+  if (u.passwordHash === newHash) {
+    // OK
+  } else if (u.passwordHash === oldHash(p)) {
+    u.passwordHash = newHash; saveUsers(users);
+  } else {
+    err.classList.add('show'); return;
   }
-  if (!found) { err.classList.add('show'); return; }
-  // Multiple matches with same password? Let user pick
-  const pwMatches = matches.filter(u => u.passwordHash === newHash || u.passwordHash === oldHash(p));
-  if (pwMatches.length > 1 && !window._loginPick) {
-    let list = '';
-    pwMatches.forEach((u,i) => { list += '\n[' + (i+1) + '] ' + u.displayName + ' (ID: ' + u.id + ')'; });
-    const pick = prompt('找到多个匹配账号，请选择序号：' + list, '1');
-    const idx = parseInt(pick) - 1;
-    if (isNaN(idx) || idx < 0 || idx >= pwMatches.length) { err.textContent = '选择无效'; err.classList.add('show'); return; }
-    found = pwMatches[idx];
-  }
-  currentUser = found;
+  currentUser = u;
   loadUserData();
   clearAuthForms();
   updateHeader();
@@ -882,11 +911,19 @@ function renderPublic() {
     { key:'digital', label:'数字IC基础' }, { key:'bus', label:'总线' }, { key:'other', label:'通用' }
   ];
   let items = publicCat === 'all' ? publicKnowledge : publicKnowledge.filter(i => i.cat === publicCat);
-  document.getElementById('publicSummary').textContent = '📖 通用知识库 · 共 ' + items.length + ' 条';
+  const limit = 20;
+  const total = items.length;
+  if (!currentUser && items.length > limit) items = items.slice(0, limit);
+  document.getElementById('publicSummary').textContent = '📖 通用知识库 · 共 ' + total + ' 条';
   let fhtml = '';
   cats.forEach(c => { fhtml += '<button class="filter-chip' + (publicCat === c.key ? ' active' : '') + '" onclick="publicCat=\'' + c.key + '\';renderPublic()">' + c.label + '</button>'; });
   document.getElementById('publicFilter').innerHTML = fhtml;
-  document.getElementById('publicCards').innerHTML = items.map(c => renderKnowledgeCard(c, false)).join('');
+  let html = '';
+  items.forEach(c => { html += renderKnowledgeCard(c, false); });
+  if (!currentUser && total > limit) {
+    html += '<div class="fade-zone"><div class="fade-gradient"></div><div class="fade-content"><div class="fade-lock">🔒 登录查看更多</div><button class="fade-btn" onclick="showView(\'auth\')">立即登录</button></div></div>';
+  }
+  document.getElementById('publicCards').innerHTML = html;
 }
 
 function renderKnowledgeCard(item, isPrivate) {
