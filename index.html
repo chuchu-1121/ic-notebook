@@ -1012,6 +1012,7 @@ function switchDashTab(tab) {
 }
 
 function renderDashboard() {
+  alert('renderDashboard: dashTab=' + dashTab + ' items=' + (userData[dashTab] ? userData[dashTab].length : 'undefined'));
   const query = (document.getElementById('dashSearch')?.value || '').toLowerCase().trim();
   const cats = getCats();
 
