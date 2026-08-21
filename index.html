@@ -278,6 +278,25 @@ body {
 .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--accent); }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 
+/* Category Check Grid */
+.cat-check-grid {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.cat-check-label {
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
+  font-size: 0.82rem; padding: 5px 12px;
+  border: 1.5px solid var(--border); border-radius: 16px;
+  transition: all 0.15s;
+  user-select: none;
+}
+.cat-check-label:hover { border-color: var(--c, var(--accent)); background: var(--bg-card-hover); }
+.cat-check-label.checked { border-color: var(--c, #4ade80) !important; background: rgba(74,222,128,0.2) !important; }
+.cat-check-label input { display: none; }
+.add-cat-row {
+  display: flex; gap: 6px; align-items: center;
+}
+.add-cat-row input { flex: 1; }
+
 /* Context Menu */
 .ctx-menu {
   position: fixed; background: var(--bg-card); border: 1px solid var(--border);
@@ -419,6 +438,7 @@ body {
 
   <div class="action-bar"><span class="summary" id="publicSummary"></span></div>
   <div class="filter-bar" id="publicFilter"></div>
+  <div id="publicSyncBar" style="margin-bottom:12px"></div>
   <div class="cards-grid" id="publicCards"></div>
 </div>
 
@@ -529,44 +549,35 @@ body {
 // PUBLIC KNOWLEDGE (visible to all)
 // ============================================================
 const publicKnowledge = [
-  { id:1, cat:'bus', tag:'总线', tagClass:'tag-bus', title:'AXI 总线协议要点', subtitle:'读写通道 / Outstanding / Out-of-Order', detail:'<h4>五个通道</h4><ul><li>写地址 (AW) / 写数据 (W) / 写响应 (B)</li><li>读地址 (AR) / 读数据 (R)</li></ul><h4>关键概念</h4><ul><li><strong>Outstanding</strong>：无需等待前一笔完成即可发新事务，由 ID 位宽决定最大数量</li><li><strong>Out-of-Order</strong>：响应顺序可不同于请求顺序，通过 ID 匹配</li><li><strong>Burst</strong>：FIXED / INCR / WRAP</li></ul><h4>常见问题</h4><ul><li>ID 位宽不够导致 Outstanding 受限</li><li>跨 4KB 边界时 burst 需拆分</li><li>WSTRB 非连续时的处理</li></ul>' },
-  { id:2, cat:'other', tag:'通用', tagClass:'tag-other', title:'CDC 跨时钟域处理', subtitle:'同步器 / FIFO / 握手协议', detail:'<h4>常见方案</h4><ul><li><strong>两级同步器</strong>（2-FF Synchronizer）：单 bit 信号同步，最常用</li><li><strong>异步 FIFO</strong>：多 bit 数据跨时钟域，使用格雷码指针</li><li><strong>握手协议</strong>：请求-应答机制，适合低频控制信号</li></ul><h4>中断相关 CDC</h4><ul><li>电平中断：两级同步器即可</li><li>脉冲中断：需要脉冲展宽器，确保脉冲宽度 > 目标时钟周期 × 2</li></ul><h4>常见陷阱</h4><ul><li>多 bit 信号直接用两级同步器 → 数据不一致（需用异步 FIFO 或握手）</li><li>异步 FIFO 的满/空判断时机</li><li>复位信号也需要 CDC 处理</li></ul>' },
-  { id:3, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'reg 与 wire 的区别', subtitle:'数据类型选择与使用场景', detail:'<h4>核心区别</h4><ul><li><strong>wire</strong>：表示连线，无存储能力，必须由 assign 或模块端口持续驱动。用于组合逻辑输出、模块互联</li><li><strong>reg</strong>：表示寄存器/变量，有存储能力，在 always/initial 块中赋值。用于时序逻辑、组合逻辑的过程赋值</li></ul><h4>使用场景</h4><ul><li>wire：连续赋值（assign）、模块实例化端口连接、组合逻辑网表</li><li>reg：always 块内赋值、时序逻辑输出、过程块中的中间变量</li></ul><h4>常见误区</h4><ul><li>reg 不一定综合成寄存器——在组合 always @(*) 中的 reg 综合成 wire</li><li>wire 不一定只是连线——可以有多驱动源（需用 tri/wor 等）</li></ul>' },
-  { id:4, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'阻塞赋值 = 与非阻塞赋值 <=', subtitle:'使用场景与综合差异', detail:'<h4>阻塞赋值 =</h4><ul><li>顺序执行，立即生效</li><li>用于组合逻辑 always @(*) 块</li><li>多条 = 语句按书写顺序执行，前一条结果影响后一条</li></ul><h4>非阻塞赋值 <=</h4><ul><li>并行执行，同时更新</li><li>用于时序逻辑 always @(posedge clk) 块</li><li>所有 <= 右侧在时钟沿同时采样，左侧在时钟沿后同时更新</li></ul><h4>为什么时序逻辑必须用非阻塞？</h4><ul><li>硬件本质：所有触发器在时钟沿同时采样 D 端，同时更新 Q 端</li><li>用阻塞赋值会导致仿真顺序依赖，与硬件行为不一致</li><li>例：移位寄存器 a<=b; b<=c; 在时钟沿后 a 得到 b 的旧值，b 得到 c 的旧值——这才是硬件行为</li><li>若用阻塞：a=b; b=c; 则 a 得到 b 已更新后的值，变成链式传递，与实际硬件不符</li></ul><h4>混合使用风险</h4><ul><li>同一个 always 块中混用 = 和 <= 是语法允许但强烈不推荐</li><li>综合工具会给出警告，仿真结果可能出乎意料</li></ul>' },
-  { id:5, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'仿真竞争问题', subtitle:'Race Condition 与确定性仿真', detail:'<h4>什么是仿真竞争</h4><p>多个 always 块在同一仿真时刻被触发，执行顺序不确定，导致结果依赖于调度顺序。</p><h4>常见场景</h4><ul><li>同一时钟沿，两个 always 块读写同一变量</li><li>组合逻辑环路：a=b; b=a; 在同一时刻互相依赖</li><li>阻塞赋值与非阻塞赋值混用导致更新时机混乱</li></ul><h4>避免方法</h4><ul><li>时序逻辑统一用非阻塞 <=</li><li>组合逻辑统一用阻塞 =</li><li>避免多个 always 块驱动同一变量</li><li>使用 #0 延迟不是好习惯——会掩盖问题而非解决</li><li>SystemVerilog 引入 always_ff / always_comb 明确意图</li></ul><h4>仿真调度机制</h4><ul><li>Active 区域：阻塞赋值、非阻塞赋值右侧采样</li><li>NBA 区域：非阻塞赋值左侧更新</li><li>Postponed 区域：$monitor 等</li></ul>' },
-  { id:6, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'initial 与 always 的区别', subtitle:'仿真与综合视角', detail:'<h4>initial 块</h4><ul><li>在仿真开始时执行一次</li><li>不可综合（或仅在 FPGA 中用于初始化）</li><li>用途：测试激励生成、寄存器初始化（仿真）、$display 输出</li><li>多个 initial 块并行执行，之间顺序不确定</li></ul><h4>always 块</h4><ul><li>循环执行，敏感列表触发</li><li>可综合（取决于写法）</li><li>类型：always @(*)、always @(posedge clk)、always @(negedge rst)</li></ul><h4>always 综合规则</h4><ul><li>always @(posedge clk)：综合成触发器</li><li>always @(*) 或 always_comb：综合成组合逻辑</li><li>always @(posedge clk or negedge rst)：带异步复位的触发器</li><li>不完整的敏感列表会导致仿真与综合不一致</li></ul>' },
-  { id:7, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'task 与 function 的区别', subtitle:'可综合性与使用场景', detail:'<h4>function</h4><ul><li>必须有返回值</li><li>不能包含时序控制（#、@、wait）</li><li>调用时间：零仿真时间</li><li>可综合（纯组合逻辑）</li><li>内部只能调用其他 function</li><li>不能有 output/inout 端口</li></ul><h4>task</h4><ul><li>可以无返回值</li><li>可以包含时序控制</li><li>调用时间：可以消耗仿真时间</li><li>可综合（需满足约束）</li><li>可以调用其他 task 和 function</li><li>可以有 output/inout 端口</li></ul><h4>选择建议</h4><ul><li>纯组合计算 → function</li><li>需要时序控制或多周期行为 → task（仿真）</li><li>RTL 中常用 function 做译码、计算等</li><li>task 在 RTL 中较少使用，主要用于 testbench</li></ul>' },
-  { id:8, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'static vs automatic task', subtitle:'存储分配与递归调用', detail:'<h4>static（默认）</h4><ul><li>所有调用共享同一块存储空间</li><li>递归调用会互相覆盖变量</li><li>适合简单、不重入的场景</li><li>Verilog 默认 static</li></ul><h4>automatic</h4><ul><li>每次调用分配独立存储空间</li><li>支持递归调用，互不干扰</li><li>SystemVerilog 中模块级 task 默认 static，类中默认 automatic</li><li>关键字：task automatic my_task(...)</li></ul><h4>实际影响</h4><ul><li>递归 function 必须声明为 automatic</li><li>多个 always 块同时调用同一 static task 可能产生竞争</li><li>测试平台中的 task 通常声明为 automatic 避免意外</li></ul><h4>示例</h4><p><code>function automatic [31:0] factorial(input [5:0] n);</code><br>递归计算阶乘，必须用 automatic 否则递归变量互相覆盖。</p>' },
-  { id:9, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'generate 块使用场景', subtitle:'与 for 循环的区别', detail:'<h4>generate 用途</h4><ul><li>批量实例化模块（如 8 个相同的 FIFO）</li><li>条件编译/实例化（if-else 选择不同模块）</li><li>参数化硬件结构</li></ul><h4>generate-for vs 普通 for</h4><ul><li><strong>generate-for</strong>：在 elaborate 阶段展开，每个迭代是独立的硬件实例。用于实例化模块、assign 语句、always 块</li><li><strong>普通 for（always 内）</strong>：在仿真时循环执行，综合成组合逻辑链或状态机</li></ul><h4>典型用法</h4><ul><li>genvar i; generate for(i=0;i<N;i=i+1) begin : gen_block ... end endgenerate</li><li>必须用 genvar 声明循环变量</li><li>每个迭代生成一个独立的命名块（gen_block[0], gen_block[1]...）</li></ul><h4>常见错误</h4><ul><li>在 generate-for 中使用 integer 而非 genvar</li><li>generate-for 中忘记命名块，导致内部信号无法层级访问</li><li>generate-if 条件必须是常量表达式（elaborate 时确定）</li></ul>' },
-  { id:10, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'Verilog 语句块', subtitle:'begin-end / fork-join / 命名块', detail:'<h4>begin-end（顺序块）</h4><ul><li>语句按顺序执行</li><li>常用于 always 块、initial 块、task/function 体</li><li>综合时通常对应组合逻辑链或状态机</li></ul><h4>fork-join（并行块）</h4><ul><li>内部语句并行执行</li><li>不可综合，仅用于仿真</li><li>三个变体：fork-join（等所有完成）、fork-join_any（等任一完成）、fork-join_none（不等，立即继续）</li></ul><h4>命名块</h4><ul><li>begin : block_name ... end</li><li>可以声明局部变量（作用域限定在块内）</li><li>可以用 disable block_name 提前退出</li><li>综合时命名块主要用于 generate 和层级命名</li></ul>' },
-  { id:11, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'RTL 代码常见坑', subtitle:'综合陷阱与仿真不一致', detail:'<h4>常见坑</h4><ul><li><strong>不完整敏感列表</strong>：always @(a) 缺少 b，仿真只在 a 变化时触发，综合成 latch 或与仿真不一致</li><li><strong>Latch 意外生成</strong>：if 缺少 else、case 缺少 default，组合逻辑中未覆盖所有分支 → 综合成 latch</li><li><strong>阻塞/非阻塞混用</strong>：同一块中混用 = 和 <=，仿真行为难预测</li><li><strong>多驱动</strong>：多个 always 块驱动同一变量 → 综合报错</li><li><strong>复位遗漏</strong>：时序逻辑中部分寄存器在 if(rst) 分支外有赋值，导致复位行为不一致</li><li><strong>宽度不匹配</strong>：隐式位宽扩展，如 {a, b} + c 与 a + b + c 结果不同</li><li><strong>for 循环展开过大</strong>：大循环在综合时展开成巨大组合逻辑，时序难收敛</li></ul><h4>检查方法</h4><ul><li>综合后检查 latch 报告</li><li>跑 lint 工具（SpyGlass、Verilator）</li><li>对比仿真与形式验证结果</li></ul>' },
-  { id:12, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'双向 inout 端口正确实现', subtitle:'三态门与总线协议', detail:'<h4>inout 端口本质</h4><p>双向端口在物理上对应的是一根既可用于输入也可用于输出的线，需要三态门控制。</p><h4>正确实现</h4><ul><li>用三态 buffer：<code>assign io_pin = oe ? out_val : 1\'bz;</code></li><li>oe（输出使能）= 1 时驱动输出，= 0 时高阻（外部驱动）</li><li>读取时：<code>assign in_val = io_pin;</code> 持续读取</li></ul><h4>关键注意事项</h4><ul><li>inout 只能出现在模块端口，不能作为 always 块的 reg 变量</li><li>顶层测试平台中 inout 需用 wire 类型</li><li>多个三态驱动可以共享同一根线（总线），但同一时刻只能有一个 oe=1</li><li>高阻态 z 在综合时自动映射为三态 buffer（仅顶层端口）</li><li>内部逻辑不能用 inout，需分解为 data_in、data_out、data_oe 三个信号</li></ul><h4>内部处理模式</h4><ul><li>顶层模块：inout 端口 + 三态逻辑</li><li>内部模块：分离的 input/output/enable 信号</li><li>例：I2C SDA 线——顶层三态驱动，内部用 sda_in/sda_out/sda_oe</li></ul>' }
+  { id:1, cats:['other'], tag:'使用指南', tagClass:'tag-other', title:'如何添加知识点', subtitle:'点击右上角「+ 新增」按钮', detail:'<h4>添加步骤</h4><ol><li>点击右上角 <strong>+ 新增</strong> 按钮</li><li>选择分类，填写标题和详细内容</li><li>详细内容支持 HTML 格式，可使用列表、标题等标签</li><li>点击保存即可</li></ol><h4>编辑与删除</h4><p>展开卡片后，底部有 <strong>编辑</strong> 和 <strong>删除</strong> 按钮，可随时修改。</p>' },
+  { id:2, cats:['other'], tag:'使用指南', tagClass:'tag-other', title:'知识库分类说明', subtitle:'了解分类的用途与管理', detail:'<h4>分类管理</h4><ul><li>默认有一个 <strong>默认分组</strong>，所有新建内容默认属于此分类</li><li>新增或编辑时，可选择 <strong>自定义分类</strong> 创建新分类</li><li>在筛选栏中可管理分类，支持删除自定义分类</li><li>删除分类时，该分类下的内容会自动移至默认分组</li></ul><h4>提示</h4><p>可以按分类筛选，也可以使用搜索框快速查找。</p>' },
+  { id:3, cats:['bus'], tag:'总线', tagClass:'tag-bus', title:'AXI 总线协议要点', subtitle:'读写通道 / Outstanding / Out-of-Order', detail:'<h4>五个通道</h4><ul><li>写地址 (AW) / 写数据 (W) / 写响应 (B)</li><li>读地址 (AR) / 读数据 (R)</li></ul><h4>关键概念</h4><ul><li><strong>Outstanding</strong>：无需等待前一笔完成即可发新事务，由 ID 位宽决定最大数量</li><li><strong>Out-of-Order</strong>：响应顺序可不同于请求顺序，通过 ID 匹配</li><li><strong>Burst</strong>：FIXED / INCR / WRAP</li></ul><h4>常见问题</h4><ul><li>ID 位宽不够导致 Outstanding 受限</li><li>跨 4KB 边界时 burst 需拆分</li><li>WSTRB 非连续时的处理</li></ul>' },
+  { id:4, cats:['other'], tag:'通用', tagClass:'tag-other', title:'CDC 跨时钟域处理', subtitle:'同步器 / FIFO / 握手协议', detail:'<h4>常见方案</h4><ul><li><strong>两级同步器</strong>（2-FF Synchronizer）：单 bit 信号同步，最常用</li><li><strong>异步 FIFO</strong>：多 bit 数据跨时钟域，使用格雷码指针</li><li><strong>握手协议</strong>：请求-应答机制，适合低频控制信号</li></ul><h4>中断相关 CDC</h4><ul><li>电平中断：两级同步器即可</li><li>脉冲中断：需要脉冲展宽器，确保脉冲宽度 > 目标时钟周期 × 2</li></ul><h4>常见陷阱</h4><ul><li>多 bit 信号直接用两级同步器 → 数据不一致（需用异步 FIFO 或握手）</li><li>异步 FIFO 的满/空判断时机</li><li>复位信号也需要 CDC 处理</li></ul>' },
+  { id:5, cats:['verilog'], tag:'Verilog', tagClass:'tag-verilog', title:'reg 与 wire 的区别', subtitle:'数据类型选择与使用场景', detail:'<h4>核心区别</h4><ul><li><strong>wire</strong>：表示连线，无存储能力，必须由 assign 或模块端口持续驱动。用于组合逻辑输出、模块互联</li><li><strong>reg</strong>：表示寄存器/变量，有存储能力，在 always/initial 块中赋值。用于时序逻辑、组合逻辑的过程赋值</li></ul><h4>使用场景</h4><ul><li>wire：连续赋值（assign）、模块实例化端口连接、组合逻辑网表</li><li>reg：always 块内赋值、时序逻辑输出、过程块中的中间变量</li></ul><h4>常见误区</h4><ul><li>reg 不一定综合成寄存器——在组合 always @(*) 中的 reg 综合成 wire</li><li>wire 不一定只是连线——可以有多驱动源（需用 tri/wor 等）</li></ul>' },
+  { id:6, cats:['verilog'], tag:'Verilog', tagClass:'tag-verilog', title:'阻塞赋值 = 与非阻塞赋值 <=', subtitle:'使用场景与综合差异', detail:'<h4>阻塞赋值 =</h4><ul><li>顺序执行，立即生效</li><li>用于组合逻辑 always @(*) 块</li><li>多条 = 语句按书写顺序执行，前一条结果影响后一条</li></ul><h4>非阻塞赋值 <=</h4><ul><li>并行执行，同时更新</li><li>用于时序逻辑 always @(posedge clk) 块</li><li>所有 <= 右侧在时钟沿同时采样，左侧在时钟沿后同时更新</li></ul><h4>为什么时序逻辑必须用非阻塞？</h4><ul><li>硬件本质：所有触发器在时钟沿同时采样 D 端，同时更新 Q 端</li><li>用阻塞赋值会导致仿真顺序依赖，与硬件行为不一致</li><li>例：移位寄存器 a<=b; b<=c; 在时钟沿后 a 得到 b 的旧值，b 得到 c 的旧值——这才是硬件行为</li><li>若用阻塞：a=b; b=c; 则 a 得到 b 已更新后的值，变成链式传递，与实际硬件不符</li></ul><h4>混合使用风险</h4><ul><li>同一个 always 块中混用 = 和 <= 是语法允许但强烈不推荐</li><li>综合工具会给出警告，仿真结果可能出乎意料</li></ul>' },
+  { id:7, cats:['verilog'], tag:'Verilog', tagClass:'tag-verilog', title:'仿真竞争问题', subtitle:'Race Condition 与确定性仿真', detail:'<h4>什么是仿真竞争</h4><p>多个 always 块在同一仿真时刻被触发，执行顺序不确定，导致结果依赖于调度顺序。</p><h4>常见场景</h4><ul><li>同一时钟沿，两个 always 块读写同一变量</li><li>组合逻辑环路：a=b; b=a; 在同一时刻互相依赖</li><li>阻塞赋值与非阻塞赋值混用导致更新时机混乱</li></ul><h4>避免方法</h4><ul><li>时序逻辑统一用非阻塞 <=</li><li>组合逻辑统一用阻塞 =</li><li>避免多个 always 块驱动同一变量</li><li>使用 #0 延迟不是好习惯——会掩盖问题而非解决</li><li>SystemVerilog 引入 always_ff / always_comb 明确意图</li></ul><h4>仿真调度机制</h4><ul><li>Active 区域：阻塞赋值、非阻塞赋值右侧采样</li><li>NBA 区域：非阻塞赋值左侧更新</li><li>Postponed 区域：$monitor 等</li></ul>' },
+  { id:8, cats:['verilog'], tag:'Verilog', tagClass:'tag-verilog', title:'initial 与 always 的区别', subtitle:'仿真与综合视角', detail:'<h4>initial 块</h4><ul><li>在仿真开始时执行一次</li><li>不可综合（或仅在 FPGA 中用于初始化）</li><li>用途：测试激励生成、寄存器初始化（仿真）、$display 输出</li><li>多个 initial 块并行执行，之间顺序不确定</li></ul><h4>always 块</h4><ul><li>循环执行，敏感列表触发</li><li>可综合（取决于写法）</li><li>类型：always @(*)、always @(posedge clk)、always @(negedge rst)</li></ul><h4>always 综合规则</h4><ul><li>always @(posedge clk)：综合成触发器</li><li>always @(*) 或 always_comb：综合成组合逻辑</li><li>always @(posedge clk or negedge rst)：带异步复位的触发器</li><li>不完整的敏感列表会导致仿真与综合不一致</li></ul>' },
+  { id:9, cats:['verilog'], tag:'Verilog', tagClass:'tag-verilog', title:'task 与 function 的区别', subtitle:'可综合性与使用场景', detail:'<h4>function</h4><ul><li>必须有返回值</li><li>不能包含时序控制（#、@、wait）</li><li>调用时间：零仿真时间</li><li>可综合（纯组合逻辑）</li><li>内部只能调用其他 function</li><li>不能有 output/inout 端口</li></ul><h4>task</h4><ul><li>可以无返回值</li><li>可以包含时序控制</li><li>调用时间：可以消耗仿真时间</li><li>可综合（需满足约束）</li><li>可以调用其他 task 和 function</li><li>可以有 output/inout 端口</li></ul><h4>选择建议</h4><ul><li>纯组合计算 → function</li><li>需要时序控制或多周期行为 → task（仿真）</li><li>RTL 中常用 function 做译码、计算等</li><li>task 在 RTL 中较少使用，主要用于 testbench</li></ul>' },
+  { id:10, cats:['verilog'], tag:'Verilog', tagClass:'tag-verilog', title:'static vs automatic task', subtitle:'存储分配与递归调用', detail:'<h4>static（默认）</h4><ul><li>所有调用共享同一块存储空间</li><li>递归调用会互相覆盖变量</li><li>适合简单、不重入的场景</li><li>Verilog 默认 static</li></ul><h4>automatic</h4><ul><li>每次调用分配独立存储空间</li><li>支持递归调用，互不干扰</li><li>SystemVerilog 中模块级 task 默认 static，类中默认 automatic</li><li>关键字：task automatic my_task(...)</li></ul><h4>实际影响</h4><ul><li>递归 function 必须声明为 automatic</li><li>多个 always 块同时调用同一 static task 可能产生竞争</li><li>测试平台中的 task 通常声明为 automatic 避免意外</li></ul><h4>示例</h4><p><code>function automatic [31:0] factorial(input [5:0] n);</code><br>递归计算阶乘，必须用 automatic 否则递归变量互相覆盖。</p>' },
+  { id:11, cats:['verilog'], tag:'Verilog', tagClass:'tag-verilog', title:'generate 块使用场景', subtitle:'与 for 循环的区别', detail:'<h4>generate 用途</h4><ul><li>批量实例化模块（如 8 个相同的 FIFO）</li><li>条件编译/实例化（if-else 选择不同模块）</li><li>参数化硬件结构</li></ul><h4>generate-for vs 普通 for</h4><ul><li><strong>generate-for</strong>：在 elaborate 阶段展开，每个迭代是独立的硬件实例。用于实例化模块、assign 语句、always 块</li><li><strong>普通 for（always 内）</strong>：在仿真时循环执行，综合成组合逻辑链或状态机</li></ul><h4>典型用法</h4><ul><li>genvar i; generate for(i=0;i<N;i=i+1) begin : gen_block ... end endgenerate</li><li>必须用 genvar 声明循环变量</li><li>每个迭代生成一个独立的命名块（gen_block[0], gen_block[1]...）</li></ul><h4>常见错误</h4><ul><li>在 generate-for 中使用 integer 而非 genvar</li><li>generate-for 中忘记命名块，导致内部信号无法层级访问</li><li>generate-if 条件必须是常量表达式（elaborate 时确定）</li></ul>' },
+  { id:12, cats:['verilog'], tag:'Verilog', tagClass:'tag-verilog', title:'Verilog 语句块', subtitle:'begin-end / fork-join / 命名块', detail:'<h4>begin-end（顺序块）</h4><ul><li>语句按顺序执行</li><li>常用于 always 块、initial 块、task/function 体</li><li>综合时通常对应组合逻辑链或状态机</li></ul><h4>fork-join（并行块）</h4><ul><li>内部语句并行执行</li><li>不可综合，仅用于仿真</li><li>三个变体：fork-join（等所有完成）、fork-join_any（等任一完成）、fork-join_none（不等，立即继续）</li></ul><h4>命名块</h4><ul><li>begin : block_name ... end</li><li>可以声明局部变量（作用域限定在块内）</li><li>可以用 disable block_name 提前退出</li><li>综合时命名块主要用于 generate 和层级命名</li></ul>' },
+  { id:13, cats:['verilog'], tag:'Verilog', tagClass:'tag-verilog', title:'RTL 代码常见坑', subtitle:'综合陷阱与仿真不一致', detail:'<h4>常见坑</h4><ul><li><strong>不完整敏感列表</strong>：always @(a) 缺少 b，仿真只在 a 变化时触发，综合成 latch 或与仿真不一致</li><li><strong>Latch 意外生成</strong>：if 缺少 else、case 缺少 default，组合逻辑中未覆盖所有分支 → 综合成 latch</li><li><strong>阻塞/非阻塞混用</strong>：同一块中混用 = 和 <=，仿真行为难预测</li><li><strong>多驱动</strong>：多个 always 块驱动同一变量 → 综合报错</li><li><strong>复位遗漏</strong>：时序逻辑中部分寄存器在 if(rst) 分支外有赋值，导致复位行为不一致</li><li><strong>宽度不匹配</strong>：隐式位宽扩展，如 {a, b} + c 与 a + b + c 结果不同</li><li><strong>for 循环展开过大</strong>：大循环在综合时展开成巨大组合逻辑，时序难收敛</li></ul><h4>检查方法</h4><ul><li>综合后检查 latch 报告</li><li>跑 lint 工具（SpyGlass、Verilator）</li><li>对比仿真与形式验证结果</li></ul>' },
+  { id:14, cats:['verilog'], tag:'Verilog', tagClass:'tag-verilog', title:'双向 inout 端口正确实现', subtitle:'三态门与总线协议', detail:'<h4>inout 端口本质</h4><p>双向端口在物理上对应的是一根既可用于输入也可用于输出的线，需要三态门控制。</p><h4>正确实现</h4><ul><li>用三态 buffer：<code>assign io_pin = oe ? out_val : 1\'bz;</code></li><li>oe（输出使能）= 1 时驱动输出，= 0 时高阻（外部驱动）</li><li>读取时：<code>assign in_val = io_pin;</code> 持续读取</li></ul><h4>关键注意事项</h4><ul><li>inout 只能出现在模块端口，不能作为 always 块的 reg 变量</li><li>顶层测试平台中 inout 需用 wire 类型</li><li>多个三态驱动可以共享同一根线（总线），但同一时刻只能有一个 oe=1</li><li>高阻态 z 在综合时自动映射为三态 buffer（仅顶层端口）</li><li>内部逻辑不能用 inout，需分解为 data_in、data_out、data_oe 三个信号</li></ul><h4>内部处理模式</h4><ul><li>顶层模块：inout 端口 + 三态逻辑</li><li>内部模块：分离的 input/output/enable 信号</li><li>例：I2C SDA 线——顶层三态驱动，内部用 sda_in/sda_out/sda_oe</li></ul>' }
 ,
-  { id:13, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'Latch 与 Flip-Flop 的区别', subtitle:'电平触发 vs 边沿触发', detail:'<h4>Latch（锁存器）</h4><ul><li>电平触发：使能信号为高时，输出跟随输入变化（透明）</li><li>使能信号为低时，输出锁存上一次的值</li><li>面积更小，但时序分析困难</li><li>在标准单元库中通常不推荐使用</li></ul><h4>Flip-Flop（触发器）</h4><ul><li>边沿触发：仅在时钟上升沿（或下降沿）采样并更新</li><li>一个时钟周期只更新一次</li><li>时序分析清晰，主流设计首选</li></ul><h4>关键区别</h4><ul><li>Latch 在使能期间"透明"，毛刺会直接传播</li><li>FF 只在时钟沿采样，天然滤除毛刺</li><li>Latch 利于时序收敛（借时间），但 STA 困难</li><li>综合时意外生成 latch 是常见 bug（if 缺 else、case 缺 default）</li></ul>' },
-  { id:14, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'建立时间与保持时间', subtitle:'Setup / Hold Time', detail:'<h4>建立时间 Setup Time</h4><ul><li>时钟沿到来之前，数据必须保持稳定的最短时间</li><li>不满足 → 输出可能进入亚稳态或采样错误值</li><li>Tclk ≥ Tco + Tcomb + Tsetup + Tskew</li></ul><h4>保持时间 Hold Time</h4><ul><li>时钟沿到来之后，数据必须保持稳定的最短时间</li><li>不满足 → 数据可能被时钟沿"冲掉"</li><li>Thold ≤ Tco + Tcomb - Tskew</li></ul><h4>区别</h4><ul><li>Setup 与时钟频率有关（限制最大频率）</li><li>Hold 与时钟频率无关（限制最小延迟）</li><li>Setup 违例可通过降频修复，Hold 违例只能加 buffer 修</li></ul><h4>常见违例原因</h4><ul><li>Setup：组合逻辑路径太长、时钟偏斜过大</li><li>Hold：时钟树不平衡、数据路径太短（快路径）</li></ul>' },
-  { id:15, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'亚稳态', subtitle:'Metastability', detail:'<h4>什么是亚稳态</h4><p>当数据在时钟沿附近（setup/hold 窗口内）发生变化时，触发器输出可能进入一个不确定的中间电平状态，需要一段时间才能稳定到 0 或 1。</p><h4>危害</h4><ul><li>输出值不确定，可能既不是 0 也不是 1</li><li>下游逻辑可能读到不同的值（一部分读 0，一部分读 1）</li><li>导致系统功能错误，且难以复现</li></ul><h4>MTBF（平均无故障时间）</h4><ul><li>亚稳态无法完全避免，只能通过同步器降低概率</li><li>MTBF 与时钟频率、数据变化率、同步器级数有关</li><li>两级同步器可将 MTBF 提升到数百年级别</li></ul><h4>解决方案</h4><ul><li>两级同步器（2-FF）：最常用，用于单 bit 信号</li><li>多级同步器：进一步提高 MTBF</li><li>异步 FIFO：多 bit 数据跨时钟域</li></ul>' },
-  { id:16, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'同步复位 vs 异步复位', subtitle:'复位策略选择', detail:'<h4>同步复位</h4><ul><li>复位信号在时钟沿采样生效</li><li>优点：时序分析简单，无毛刺问题，与时钟同步</li><li>缺点：需要时钟运行才能复位，门数略多</li><li>代码：always @(posedge clk) if (!rst_n) q <= 0; else q <= d;</li></ul><h4>异步复位</h4><ul><li>复位信号直接生效，不等待时钟沿</li><li>优点：不需要时钟，复位速度快，门数更少</li><li>缺点：复位释放时可能与时钟沿冲突（复位恢复违例）</li><li>代码：always @(posedge clk or negedge rst_n) if (!rst_n) q <= 0; else q <= d;</li></ul><h4>异步复位同步释放（推荐）</h4><ul><li>复位输入异步生效，但释放时与时钟同步</li><li>避免复位恢复时的亚稳态</li><li>业界最常用的复位策略</li></ul>' },
-  { id:17, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'时钟门控', subtitle:'Clock Gating', detail:'<h4>原理</h4><p>在寄存器不需要更新时关断时钟，减少动态功耗。时钟树功耗通常占芯片总功耗的 30-50%。</p><h4>实现方式</h4><ul><li><strong>AND 门控</strong>：clk_gated = clk & en（简单但会产生毛刺，不推荐）</li><li><strong>Latch 门控</strong>：用低电平 latch + AND 门，在时钟低电平时锁存使能信号，避免毛刺（标准做法）</li><li><strong>ICG（Integrated Clock Gating Cell）</strong>：标准单元库提供的专用门控单元</li></ul><h4>注意事项</h4><ul><li>门控后的时钟需要单独做时钟树平衡</li><li>DFT 扫描测试时需要 bypass 门控</li><li>过度门控可能导致时钟树过于复杂</li></ul>' },
-  { id:18, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'流水线设计', subtitle:'Pipeline', detail:'<h4>原理</h4><p>将长组合逻辑路径切分为多个短路径，中间插入寄存器，提高时钟频率。</p><h4>优势</h4><ul><li>提高吞吐率（每周期可完成一个操作）</li><li>降低每级组合逻辑延迟，提高时钟频率</li><li>代价：增加延迟（latency）和面积（寄存器开销）</li></ul><h4>流水线级数计算</h4><ul><li>Tclk ≥ Tco + Tcomb/N + Tsetup</li><li>N 越大，频率越高，但 latency 也越大</li></ul><h4>常见问题</h4><ul><li>流水线冒险：数据相关导致停顿（RAW、WAR、WAW）</li><li>控制冒险：分支预测失败导致流水线冲刷</li><li>流水线平衡：各级延迟应尽量均匀</li></ul>' },
-  { id:19, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'状态机设计', subtitle:'Moore / Mealy FSM', detail:'<h4>Moore 状态机</h4><ul><li>输出仅取决于当前状态</li><li>输出与输入变化隔离，更稳定</li><li>状态数通常比 Mealy 多</li></ul><h4>Mealy 状态机</h4><ul><li>输出取决于当前状态 + 输入</li><li>输入变化立即影响输出（可能产生毛刺）</li><li>状态数通常更少，响应更快</li></ul><h4>编码方式</h4><ul><li>二进制编码：最省寄存器</li><li>独热码（One-hot）：每状态一个 FF，组合逻辑简单，速度快</li><li>格雷码：相邻状态仅一位变化，低功耗</li></ul><h4>设计建议</h4><ul><li>三段式写法：组合逻辑次态 + 时序逻辑现态 + 组合逻辑输出</li><li>default 分支避免 latch</li><li>独热码在 FPGA 中常用，ASIC 中根据面积/速度权衡</li></ul>' },
-  { id:20, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'格雷码与二进制计数器', subtitle:'Gray Code', detail:'<h4>格雷码特性</h4><ul><li>相邻数值之间仅有一位变化</li><li>消除多 bit 同时翻转的竞争冒险</li><li>常用于异步 FIFO 的指针传递</li></ul><h4>二进制转格雷码</h4><ul><li>gray = binary ^ (binary >> 1)</li><li>例：binary 3 (011) → gray = 011 ^ 001 = 010</li></ul><h4>应用场景</h4><ul><li>异步 FIFO 读写指针跨时钟域传递</li><li>状态机编码（低功耗）</li><li>需要无毛刺转换的编码器</li></ul><h4>注意事项</h4><ul><li>格雷码不是权重码，不能直接做算术运算</li><li>格雷码计数器需要专门的转换逻辑</li><li>FIFO 中格雷码指针经过两级同步器后再转回二进制比较</li></ul>' },
-  { id:21, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'时钟偏斜与抖动', subtitle:'Clock Skew / Jitter', detail:'<h4>时钟偏斜 Skew</h4><ul><li>同一时钟到达不同寄存器的时间差（空间差异）</li><li>原因：时钟树路径长度不同、PVT 差异</li><li>正偏斜：有助于 hold 收敛，但恶化 setup</li><li>负偏斜：有助于 setup 收敛，但恶化 hold</li></ul><h4>时钟抖动 Jitter</h4><ul><li>时钟周期在时间轴上的波动（时间差异）</li><li>周期抖动：相邻周期的时间差</li><li>相位抖动：长期累积的相位偏移</li><li>来源：PLL 噪声、电源噪声、温度变化</li></ul><h4>对时序的影响</h4><ul><li>Skew 直接影响 setup/hold 时序裕量</li><li>Jitter 在高频设计中压缩有效时钟周期</li><li>设计时需预留 jitter margin</li></ul>' },
-  { id:22, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'多周期路径与伪路径', subtitle:'Multi-cycle Path / False Path', detail:'<h4>多周期路径</h4><ul><li>数据不需要在一个周期内到达目的寄存器</li><li>需要 SDC 约束声明：set_multicycle_path</li><li>典型场景：慢速外设访问、跨时钟域数据同步</li><li>Setup 放宽到 N 个周期，Hold 默认为 N-1 个周期</li></ul><h4>伪路径 False Path</h4><ul><li>在功能上不可能发生的路径，STA 不应分析</li><li>需要 SDC 约束声明：set_false_path</li><li>典型场景：异步时钟域之间、测试模式路径、复位后不再使用的路径</li></ul><h4>区别</h4><ul><li>多周期路径：数据需要传递，但时间更宽裕</li><li>伪路径：数据根本不会沿该路径传递</li><li>错误标记可能导致功能故障</li></ul><h4>约束示例</h4><ul><li>set_multicycle_path -setup 2 -from [get_clocks clk1] -to [get_clocks clk2]</li><li>set_false_path -from [get_clocks clk1] -to [get_clocks clk2]</li></ul>' },
+  { id:15, cats:['digital'], tag:'数字IC基础', tagClass:'tag-digital', title:'Latch 与 Flip-Flop 的区别', subtitle:'电平触发 vs 边沿触发', detail:'<h4>Latch（锁存器）</h4><ul><li>电平触发：使能信号为高时，输出跟随输入变化（透明）</li><li>使能信号为低时，输出锁存上一次的值</li><li>面积更小，但时序分析困难</li><li>在标准单元库中通常不推荐使用</li></ul><h4>Flip-Flop（触发器）</h4><ul><li>边沿触发：仅在时钟上升沿（或下降沿）采样并更新</li><li>一个时钟周期只更新一次</li><li>时序分析清晰，主流设计首选</li></ul><h4>关键区别</h4><ul><li>Latch 在使能期间"透明"，毛刺会直接传播</li><li>FF 只在时钟沿采样，天然滤除毛刺</li><li>Latch 利于时序收敛（借时间），但 STA 困难</li><li>综合时意外生成 latch 是常见 bug（if 缺 else、case 缺 default）</li></ul>' },
+  { id:16, cats:['digital'], tag:'数字IC基础', tagClass:'tag-digital', title:'建立时间与保持时间', subtitle:'Setup / Hold Time', detail:'<h4>建立时间 Setup Time</h4><ul><li>时钟沿到来之前，数据必须保持稳定的最短时间</li><li>不满足 → 输出可能进入亚稳态或采样错误值</li><li>Tclk ≥ Tco + Tcomb + Tsetup + Tskew</li></ul><h4>保持时间 Hold Time</h4><ul><li>时钟沿到来之后，数据必须保持稳定的最短时间</li><li>不满足 → 数据可能被时钟沿"冲掉"</li><li>Thold ≤ Tco + Tcomb - Tskew</li></ul><h4>区别</h4><ul><li>Setup 与时钟频率有关（限制最大频率）</li><li>Hold 与时钟频率无关（限制最小延迟）</li><li>Setup 违例可通过降频修复，Hold 违例只能加 buffer 修</li></ul><h4>常见违例原因</h4><ul><li>Setup：组合逻辑路径太长、时钟偏斜过大</li><li>Hold：时钟树不平衡、数据路径太短（快路径）</li></ul>' },
+  { id:17, cats:['digital'], tag:'数字IC基础', tagClass:'tag-digital', title:'亚稳态', subtitle:'Metastability', detail:'<h4>什么是亚稳态</h4><p>当数据在时钟沿附近（setup/hold 窗口内）发生变化时，触发器输出可能进入一个不确定的中间电平状态，需要一段时间才能稳定到 0 或 1。</p><h4>危害</h4><ul><li>输出值不确定，可能既不是 0 也不是 1</li><li>下游逻辑可能读到不同的值（一部分读 0，一部分读 1）</li><li>导致系统功能错误，且难以复现</li></ul><h4>MTBF（平均无故障时间）</h4><ul><li>亚稳态无法完全避免，只能通过同步器降低概率</li><li>MTBF 与时钟频率、数据变化率、同步器级数有关</li><li>两级同步器可将 MTBF 提升到数百年级别</li></ul><h4>解决方案</h4><ul><li>两级同步器（2-FF）：最常用，用于单 bit 信号</li><li>多级同步器：进一步提高 MTBF</li><li>异步 FIFO：多 bit 数据跨时钟域</li></ul>' },
+  { id:18, cats:['digital'], tag:'数字IC基础', tagClass:'tag-digital', title:'同步复位 vs 异步复位', subtitle:'复位策略选择', detail:'<h4>同步复位</h4><ul><li>复位信号在时钟沿采样生效</li><li>优点：时序分析简单，无毛刺问题，与时钟同步</li><li>缺点：需要时钟运行才能复位，门数略多</li><li>代码：always @(posedge clk) if (!rst_n) q <= 0; else q <= d;</li></ul><h4>异步复位</h4><ul><li>复位信号直接生效，不等待时钟沿</li><li>优点：不需要时钟，复位速度快，门数更少</li><li>缺点：复位释放时可能与时钟沿冲突（复位恢复违例）</li><li>代码：always @(posedge clk or negedge rst_n) if (!rst_n) q <= 0; else q <= d;</li></ul><h4>异步复位同步释放（推荐）</h4><ul><li>复位输入异步生效，但释放时与时钟同步</li><li>避免复位恢复时的亚稳态</li><li>业界最常用的复位策略</li></ul>' },
+  { id:19, cats:['digital'], tag:'数字IC基础', tagClass:'tag-digital', title:'时钟门控', subtitle:'Clock Gating', detail:'<h4>原理</h4><p>在寄存器不需要更新时关断时钟，减少动态功耗。时钟树功耗通常占芯片总功耗的 30-50%。</p><h4>实现方式</h4><ul><li><strong>AND 门控</strong>：clk_gated = clk & en（简单但会产生毛刺，不推荐）</li><li><strong>Latch 门控</strong>：用低电平 latch + AND 门，在时钟低电平时锁存使能信号，避免毛刺（标准做法）</li><li><strong>ICG（Integrated Clock Gating Cell）</strong>：标准单元库提供的专用门控单元</li></ul><h4>注意事项</h4><ul><li>门控后的时钟需要单独做时钟树平衡</li><li>DFT 扫描测试时需要 bypass 门控</li><li>过度门控可能导致时钟树过于复杂</li></ul>' },
+  { id:20, cats:['digital'], tag:'数字IC基础', tagClass:'tag-digital', title:'流水线设计', subtitle:'Pipeline', detail:'<h4>原理</h4><p>将长组合逻辑路径切分为多个短路径，中间插入寄存器，提高时钟频率。</p><h4>优势</h4><ul><li>提高吞吐率（每周期可完成一个操作）</li><li>降低每级组合逻辑延迟，提高时钟频率</li><li>代价：增加延迟（latency）和面积（寄存器开销）</li></ul><h4>流水线级数计算</h4><ul><li>Tclk ≥ Tco + Tcomb/N + Tsetup</li><li>N 越大，频率越高，但 latency 也越大</li></ul><h4>常见问题</h4><ul><li>流水线冒险：数据相关导致停顿（RAW、WAR、WAW）</li><li>控制冒险：分支预测失败导致流水线冲刷</li><li>流水线平衡：各级延迟应尽量均匀</li></ul>' },
+  { id:21, cats:['digital'], tag:'数字IC基础', tagClass:'tag-digital', title:'状态机设计', subtitle:'Moore / Mealy FSM', detail:'<h4>Moore 状态机</h4><ul><li>输出仅取决于当前状态</li><li>输出与输入变化隔离，更稳定</li><li>状态数通常比 Mealy 多</li></ul><h4>Mealy 状态机</h4><ul><li>输出取决于当前状态 + 输入</li><li>输入变化立即影响输出（可能产生毛刺）</li><li>状态数通常更少，响应更快</li></ul><h4>编码方式</h4><ul><li>二进制编码：最省寄存器</li><li>独热码（One-hot）：每状态一个 FF，组合逻辑简单，速度快</li><li>格雷码：相邻状态仅一位变化，低功耗</li></ul><h4>设计建议</h4><ul><li>三段式写法：组合逻辑次态 + 时序逻辑现态 + 组合逻辑输出</li><li>default 分支避免 latch</li><li>独热码在 FPGA 中常用，ASIC 中根据面积/速度权衡</li></ul>' },
+  { id:22, cats:['digital'], tag:'数字IC基础', tagClass:'tag-digital', title:'格雷码与二进制计数器', subtitle:'Gray Code', detail:'<h4>格雷码特性</h4><ul><li>相邻数值之间仅有一位变化</li><li>消除多 bit 同时翻转的竞争冒险</li><li>常用于异步 FIFO 的指针传递</li></ul><h4>二进制转格雷码</h4><ul><li>gray = binary ^ (binary >> 1)</li><li>例：binary 3 (011) → gray = 011 ^ 001 = 010</li></ul><h4>应用场景</h4><ul><li>异步 FIFO 读写指针跨时钟域传递</li><li>状态机编码（低功耗）</li><li>需要无毛刺转换的编码器</li></ul><h4>注意事项</h4><ul><li>格雷码不是权重码，不能直接做算术运算</li><li>格雷码计数器需要专门的转换逻辑</li><li>FIFO 中格雷码指针经过两级同步器后再转回二进制比较</li></ul>' },
+  { id:23, cats:['digital'], tag:'数字IC基础', tagClass:'tag-digital', title:'时钟偏斜与抖动', subtitle:'Clock Skew / Jitter', detail:'<h4>时钟偏斜 Skew</h4><ul><li>同一时钟到达不同寄存器的时间差（空间差异）</li><li>原因：时钟树路径长度不同、PVT 差异</li><li>正偏斜：有助于 hold 收敛，但恶化 setup</li><li>负偏斜：有助于 setup 收敛，但恶化 hold</li></ul><h4>时钟抖动 Jitter</h4><ul><li>时钟周期在时间轴上的波动（时间差异）</li><li>周期抖动：相邻周期的时间差</li><li>相位抖动：长期累积的相位偏移</li><li>来源：PLL 噪声、电源噪声、温度变化</li></ul><h4>对时序的影响</h4><ul><li>Skew 直接影响 setup/hold 时序裕量</li><li>Jitter 在高频设计中压缩有效时钟周期</li><li>设计时需预留 jitter margin</li></ul>' },
+  { id:24, cats:['digital'], tag:'数字IC基础', tagClass:'tag-digital', title:'多周期路径与伪路径', subtitle:'Multi-cycle Path / False Path', detail:'<h4>多周期路径</h4><ul><li>数据不需要在一个周期内到达目的寄存器</li><li>需要 SDC 约束声明：set_multicycle_path</li><li>典型场景：慢速外设访问、跨时钟域数据同步</li><li>Setup 放宽到 N 个周期，Hold 默认为 N-1 个周期</li></ul><h4>伪路径 False Path</h4><ul><li>在功能上不可能发生的路径，STA 不应分析</li><li>需要 SDC 约束声明：set_false_path</li><li>典型场景：异步时钟域之间、测试模式路径、复位后不再使用的路径</li></ul><h4>区别</h4><ul><li>多周期路径：数据需要传递，但时间更宽裕</li><li>伪路径：数据根本不会沿该路径传递</li><li>错误标记可能导致功能故障</li></ul><h4>约束示例</h4><ul><li>set_multicycle_path -setup 2 -from [get_clocks clk1] -to [get_clocks clk2]</li><li>set_false_path -from [get_clocks clk1] -to [get_clocks clk2]</li></ul>' },
 ];
-
-// ============================================================
-// DEFAULT USER DATA TEMPLATES
-// ============================================================
-function defaultKnowledge() { return [
-  { id:1, cat:'默认分组', title:'如何添加知识点', subtitle:'点击右上角「+ 新增」按钮', detail:'<h4>添加步骤</h4><ol><li>点击右上角 <strong>+ 新增</strong> 按钮</li><li>选择分类，填写标题和详细内容</li><li>详细内容支持 HTML 格式，可使用列表、标题等标签</li><li>点击保存即可</li></ol><h4>编辑与删除</h4><p>展开卡片后，底部有 <strong>编辑</strong> 和 <strong>删除</strong> 按钮，可随时修改。</p>' },
-  { id:2, cat:'默认分组', title:'知识库分类说明', subtitle:'了解分类的用途与管理', detail:'<h4>分类管理</h4><ul><li>默认有一个 <strong>默认分组</strong>，所有新建内容默认属于此分类</li><li>新增或编辑时，可选择 <strong>自定义分类</strong> 创建新分类</li><li>在筛选栏中可管理分类，支持删除自定义分类</li><li>删除分类时，该分类下的内容会自动移至默认分组</li></ul><h4>提示</h4><p>可以按分类筛选，也可以使用搜索框快速查找。</p>' }
-];}
-function defaultProjects() { return [
-  { id:1, year:'示例', title:'如何记录项目复盘', role:'点击右上角「+ 新增项目」开始', detail:'<h4>项目复盘的作用</h4><p>项目复盘帮助你沉淀每段工作中的关键经验，包括：</p><ul><li><strong>项目规模</strong>：芯片规格、核心数量、工艺节点等</li><li><strong>你的职责</strong>：负责的模块、参与的工作内容</li><li><strong>关键挑战</strong>：遇到的技术难点和解决方案</li><li><strong>经验教训</strong>：踩过的坑和总结的最佳实践</li></ul><h4>如何使用</h4><ol><li>点击右上角 <strong>+ 新增项目</strong></li><li>填写年份、项目名称、你的角色</li><li>在详细内容中用 HTML 格式记录完整复盘</li><li>保存后项目会按时间线排列展示</li></ol><h4>提示</h4><p>面试时按时间线回顾项目经历，能清晰讲述每个项目的技术深度和个人贡献。</p>' }
-];}
 function defaultFlashcards() { return [
-  { id:1, cat:'默认分组', q:'如何使用 IC Notebook 速查卡？', a:'<h4>速查卡功能</h4><p>速查卡采用正面问题、反面答案的翻转卡片设计：</p><ol><li>点击 <strong>+ 新增速查卡</strong> 创建卡片</li><li>填写问题（正面）和答案（反面）</li><li>浏览时点击卡片即可翻转查看答案</li><li>支持按分类筛选，适合面试前快速复习</li></ol>' },
-  { id:2, cat:'默认分组', q:'知识库和速查卡有什么区别？', a:'<h4>知识库</h4><ul><li>适合记录结构化知识</li><li>有标题、副标题、详细内容</li><li>适合长篇技术笔记</li></ul><h4>速查卡</h4><ul><li>适合快速问答</li><li>正面问题 + 反面答案</li><li>适合面试考前突击</li></ul><h4>建议</h4><p>日常学习用知识库详细记录，面试前把关键点提炼成速查卡。</p>' }
+  { id:1, cats:['默认分组'], q:'如何使用 IC Notebook 速查卡？', a:'<h4>速查卡功能</h4><p>速查卡采用正面问题、反面答案的翻转卡片设计：</p><ol><li>点击 <strong>+ 新增速查卡</strong> 创建卡片</li><li>填写问题（正面）和答案（反面）</li><li>浏览时点击卡片即可翻转查看答案</li><li>支持按分类筛选，适合面试前快速复习</li></ol>' },
+  { id:2, cats:['默认分组'], q:'知识库和速查卡有什么区别？', a:'<h4>知识库</h4><ul><li>适合记录结构化知识</li><li>有标题、副标题、详细内容</li><li>适合长篇技术笔记</li></ul><h4>速查卡</h4><ul><li>适合快速问答</li><li>正面问题 + 反面答案</li><li>适合面试考前突击</li></ul><h4>建议</h4><p>日常学习用知识库详细记录，面试前把关键点提炼成速查卡。</p>' }
 ];}
 
 // ============================================================
@@ -750,8 +761,23 @@ function loadUserData() {
     userData.flashcards = d.flashcards || defaultFlashcards();
     userData.knowledgeCats = d.knowledgeCats || ['默认分组'];
     userData.flashcardCats = d.flashcardCats || ['默认分组'];
+    userData.syncedPublicIds = d.syncedPublicIds || [];
+    // Migrate: convert cat to cats for old items
+    userData.knowledge.forEach(item => {
+      if (item.cat && !item.cats) { item.cats = [item.cat]; delete item.cat; }
+    });
+    userData.flashcards.forEach(item => {
+      if (item.cat && !item.cats) { item.cats = [item.cat]; delete item.cat; }
+    });
+    // Migrate: add syncedFrom to old synced items missing it
+    userData.knowledge.forEach(item => {
+      if (!item.syncedFrom && userData.syncedPublicIds.length > 0) {
+        const match = publicKnowledge.find(pk => pk.title === item.title && pk.subtitle === item.subtitle);
+        if (match) item.syncedFrom = match.id;
+      }
+    });
   } catch(e) {
-    userData = { knowledge: defaultKnowledge(), projects: defaultProjects(), flashcards: defaultFlashcards(), knowledgeCats: ['默认分组'], flashcardCats: ['默认分组'] };
+    userData = { knowledge: defaultKnowledge(), projects: defaultProjects(), flashcards: defaultFlashcards(), knowledgeCats: ['默认分组'], flashcardCats: ['默认分组'], syncedPublicIds: [] };
   }
 }
 
@@ -769,7 +795,7 @@ function showView(name) {
   const v = document.getElementById('view-' + name);
   if (v) v.classList.add('active');
   updateHeader();
-  if (name === 'home') renderPublic();
+  if (name === 'home') { renderPublic(); }
   if (name === 'auth') { document.getElementById('loginUser').focus(); }
   if (name === 'dash') renderDashboard();
 }
@@ -910,7 +936,10 @@ function renderPublic() {
     { key:'all', label:'全部' }, { key:'verilog', label:'Verilog' },
     { key:'digital', label:'数字IC基础' }, { key:'bus', label:'总线' }, { key:'other', label:'通用' }
   ];
-  let items = publicCat === 'all' ? publicKnowledge : publicKnowledge.filter(i => i.cat === publicCat);
+  let items = publicCat === 'all' ? publicKnowledge : publicKnowledge.filter(i => {
+    const cats = i.cats || (i.cat ? [i.cat] : []);
+    return cats.includes(publicCat);
+  });
   const limit = 20;
   const total = items.length;
   if (!currentUser && items.length > limit) items = items.slice(0, limit);
@@ -918,8 +947,21 @@ function renderPublic() {
   let fhtml = '';
   cats.forEach(c => { fhtml += '<button class="filter-chip' + (publicCat === c.key ? ' active' : '') + '" onclick="publicCat=\'' + c.key + '\';renderPublic()">' + c.label + '</button>'; });
   document.getElementById('publicFilter').innerHTML = fhtml;
+  let syncHtml = '';
+  if (currentUser) {
+    syncHtml = '<div class="action-bar"><span class="summary">' + items.length + ' 条</span><div><button class="btn btn-sm" onclick="syncAllPublic()">📥 一键同步全部</button><button class="btn btn-sm btn-primary" onclick="syncSelectedPublic()" id="btnSyncSelected" style="display:none">同步选中</button></div></div>';
+  }
+  document.getElementById('publicSyncBar').innerHTML = syncHtml;
   let html = '';
-  items.forEach(c => { html += renderKnowledgeCard(c, false); });
+  items.forEach(c => {
+    const synced = currentUser && userData.syncedPublicIds.includes(c.id);
+    let cardHtml = renderKnowledgeCard(c, false);
+    if (currentUser) {
+      const checkHtml = synced ? '<span title="已同步" style="color:var(--accent);font-size:0.8rem">✅</span>' : '<input type="checkbox" class="sync-check" value="' + c.id + '" onclick="event.stopPropagation();updateSyncBtn()" title="选择同步" style="margin-right:6px">';
+      cardHtml = cardHtml.replace('<span class="card-tag"', checkHtml + '<span class="card-tag"');
+    }
+    html += cardHtml;
+  });
   if (!currentUser && total > limit) {
     html += '<div class="fade-zone"><div class="fade-gradient"></div><div class="fade-content"><div class="fade-lock">🔒 登录查看更多</div><button class="fade-btn" onclick="showView(\'auth\')">立即登录</button></div></div>';
   }
@@ -927,10 +969,14 @@ function renderPublic() {
 }
 
 function renderKnowledgeCard(item, isPrivate) {
-  const color = getCatColor(item.cat);
-  const tagStyle = 'style="background:' + color + '22;color:' + color + '"';
+  const cats = item.cats || (item.cat ? [item.cat] : ['默认分组']);
+  let tagsHtml = '';
+  cats.forEach(c => {
+    const color = getCatColor(c);
+    tagsHtml += '<span class="card-tag" style="background:' + color + '22;color:' + color + ';margin-right:4px">' + escHtml(c) + '</span>';
+  });
   const actions = isPrivate ? '<div class="card-actions"><button class="btn btn-sm" onclick="event.stopPropagation();openEditModal(\'' + dashTab + '\',' + item.id + ')">✏️ 编辑</button><button class="btn btn-sm" onclick="event.stopPropagation();deleteItem(\'' + dashTab + '\',' + item.id + ')" style="color:var(--danger)">🗑 删除</button></div>' : '';
-  return '<div class="knowledge-card" onclick="this.classList.toggle(\'expanded\')"><span class="card-tag" ' + tagStyle + '>' + escHtml(item.cat) + '</span><div class="card-title">' + escHtml(item.title) + '</div><div class="card-subtitle">' + escHtml(item.subtitle) + '</div><div class="card-detail">' + item.detail + actions + '</div></div>';
+  return '<div class="knowledge-card" onclick="this.classList.toggle(\'expanded\')">' + tagsHtml + '<div class="card-title">' + escHtml(item.title) + '</div><div class="card-subtitle">' + escHtml(item.subtitle) + '</div><div class="card-detail">' + item.detail + actions + '</div></div>';
 }
 
 // ============================================================
@@ -949,7 +995,10 @@ function renderDashboard() {
   const query = (document.getElementById('dashSearch')?.value || '').toLowerCase().trim();
   const cats = getCats();
 
-  let items = dashCat === 'all' ? [...userData[dashTab]] : userData[dashTab].filter(i => i.cat === dashCat);
+  let items = dashCat === 'all' ? [...userData[dashTab]] : userData[dashTab].filter(i => {
+    const cats = i.cats || (i.cat ? [i.cat] : []);
+    return cats.includes(dashCat);
+  });
   if (query) {
     items = items.filter(i => (i.title || i.q || '').toLowerCase().includes(query) || (i.subtitle || i.role || '').toLowerCase().includes(query) || (i.detail || i.a || '').toLowerCase().includes(query));
   }
@@ -978,8 +1027,13 @@ function renderDashboard() {
   } else {
     html += '<div class="flash-grid">';
     items.forEach(f => {
-      const color = getCatColor(f.cat);
-      html += '<div class="flash-card" onclick="this.classList.toggle(\'flipped\')"><div class="flash-inner"><div class="flash-front"><span class="flash-tag card-tag" style="background:' + color + '22;color:' + color + '">' + escHtml(f.cat) + '</span><div class="flash-q">' + escHtml(f.q) + '</div><div class="flash-hint">👆 点击翻转</div></div><div class="flash-back">' + f.a + '<div class="card-actions" style="margin-top:8px"><button class="btn btn-sm" onclick="event.stopPropagation();openEditModal(\'flashcards\',' + f.id + ')">✏️ 编辑</button><button class="btn btn-sm" onclick="event.stopPropagation();deleteItem(\'flashcards\',' + f.id + ')" style="color:var(--danger)">🗑 删除</button></div></div></div></div>';
+      const cats = f.cats || (f.cat ? [f.cat] : ['默认分组']);
+      let tagsHtml = '';
+      cats.forEach(c => {
+        const color = getCatColor(c);
+        tagsHtml += '<span class="flash-tag card-tag" style="background:' + color + '22;color:' + color + ';margin-right:3px">' + escHtml(c) + '</span>';
+      });
+      html += '<div class="flash-card" onclick="this.classList.toggle(\'flipped\')"><div class="flash-inner"><div class="flash-front">' + tagsHtml + '<div class="flash-q">' + escHtml(f.q) + '</div><div class="flash-hint">👆 点击翻转</div></div><div class="flash-back">' + f.a + '<div class="card-actions" style="margin-top:8px"><button class="btn btn-sm" onclick="event.stopPropagation();openEditModal(\'flashcards\',' + f.id + ')">✏️ 编辑</button><button class="btn btn-sm" onclick="event.stopPropagation();deleteItem(\'flashcards\',' + f.id + ')" style="color:var(--danger)">🗑 删除</button></div></div></div></div>';
     });
     html += '<div class="add-card" onclick="openAddModal()">+ 新增速查卡</div></div>';
   }
@@ -1011,8 +1065,15 @@ function showModal(tab) {
   let form = '<h3>' + (editingId ? '编辑' : '新增') + (tab === 'knowledge' ? '知识点' : tab === 'projects' ? '项目' : '速查卡') + '</h3>';
 
   if (tab === 'knowledge') {
-    form += '<div class="field"><label>分类</label><select id="mfCat" onchange="onCatChange()">' + cats.map(c => '<option value="' + c.replace(/"/g,'&quot;') + '"' + (item && item.cat === c ? ' selected' : '') + '>' + c + '</option>').join('') + '<option value="__custom__">⚡ 自定义分类...</option></select></div>';
-    form += '<div class="field" id="mfCatCustom" style="display:none"><label>新分类名称</label><input type="text" id="mfCatName" placeholder="输入分类名称"></div>';
+    const selCats = item ? (item.cats || (item.cat ? [item.cat] : ['默认分组'])) : ['默认分组'];
+    form += '<div class="field"><label>分组（可多选）</label><div class="cat-check-grid">';
+    cats.forEach(c => {
+      const color = getCatColor(c);
+      const checked = selCats.includes(c);
+      form += '<label class="cat-check-label' + (checked ? ' checked' : '') + '" style="--c:' + color + '" onclick="toggleCatCheck(this)"><input type="checkbox" class="cat-check" value="' + c.replace(/"/g,'&quot;') + '"' + (checked ? ' checked' : '') + '>' + c + '</label>';
+    });
+    form += '</div></div>';
+    form += '<div class="field"><div class="add-cat-row"><input type="text" id="mfCatName" placeholder="输入新分组名称"><button class="btn btn-sm" type="button" onclick="addCatFromModal()">+ 添加</button></div></div>';
     form += '<div class="field"><label>标题</label><input type="text" id="mfTitle" value="' + (item ? escHtml(item.title) : '') + '"></div>';
     form += '<div class="field"><label>副标题</label><input type="text" id="mfSub" value="' + (item ? escHtml(item.subtitle) : '') + '"></div>';
     form += '<div class="field"><label>详细内容 (HTML)</label><textarea id="mfDetail">' + (item ? item.detail : '') + '</textarea></div>';
@@ -1022,7 +1083,8 @@ function showModal(tab) {
     form += '<div class="field"><label>角色</label><input type="text" id="mfRole" value="' + (item ? escHtml(item.role) : '') + '"></div>';
     form += '<div class="field"><label>详细内容 (HTML)</label><textarea id="mfDetail">' + (item ? item.detail : '') + '</textarea></div>';
   } else {
-    form += '<div class="field"><label>分类</label><select id="mfCat" onchange="onCatChange()">' + cats.map(c => '<option value="' + c.replace(/"/g,'&quot;') + '"' + (item && item.cat === c ? ' selected' : '') + '>' + c + '</option>').join('') + '<option value="__custom__">⚡ 自定义分类...</option></select></div>';
+    const selCat = item ? (item.cats ? item.cats[0] : (item.cat || '默认分组')) : (cats[0] || '默认分组');
+    form += '<div class="field"><label>分类</label><select id="mfCat" onchange="onCatChange()">' + cats.map(c => '<option value="' + c.replace(/"/g,'&quot;') + '"' + (selCat === c ? ' selected' : '') + '>' + c + '</option>').join('') + '<option value="__custom__">⚡ 自定义分类...</option></select></div>';
     form += '<div class="field" id="mfCatCustom" style="display:none"><label>新分类名称</label><input type="text" id="mfCatName" placeholder="输入分类名称"></div>';
     form += '<div class="field"><label>问题</label><input type="text" id="mfQ" value="' + (item ? escHtml(item.q) : '') + '"></div>';
     form += '<div class="field"><label>答案 (HTML)</label><textarea id="mfA">' + (item ? item.a : '') + '</textarea></div>';
@@ -1037,18 +1099,32 @@ function onCatChange() {
   if (sel && custom) custom.style.display = sel.value === '__custom__' ? '' : 'none';
 }
 
-// Add right-click context menu on category selects AND filter chips
-document.addEventListener('contextmenu', function(e) {
-  // Check if right-clicking on category select in modal
-  const sel = e.target.closest('select');
-  if (sel && sel.id === 'mfCat') {
-    e.preventDefault();
-    const val = sel.value;
-    if (val === '__custom__' || val === '默认分组') { hideCtxMenu(); return; }
-    window._ctxCat = val;
-    showCtxMenu(e.pageX, e.pageY);
-    return;
+function toggleCatCheck(el) {
+  var cb = el.querySelector('.cat-check');
+  var isChecked = !cb.checked;
+  cb.checked = isChecked;
+  if (isChecked) {
+    el.style.borderColor = el.style.getPropertyValue('--c') || '#4ade80';
+    el.style.background = 'rgba(74,222,128,0.2)';
+    el.classList.add('checked');
+  } else {
+    el.style.borderColor = '';
+    el.style.background = '';
+    el.classList.remove('checked');
   }
+}
+
+function addCatFromModal() {
+  const name = document.getElementById('mfCatName').value.trim();
+  if (!name) return;
+  addCat(name);
+  saveUserData();
+  // Refresh the modal
+  if (editingId) { openEditModal(dashTab, editingId); } else { openAddModal(); }
+}
+
+// Add right-click context menu on filter chips
+document.addEventListener('contextmenu', function(e) {
   // Check if right-clicking on filter bar chip
   const chip = e.target.closest('.filter-chip');
   if (chip && chip.textContent && !chip.textContent.includes('全部') && !chip.textContent.includes('自定义')) {
@@ -1080,7 +1156,13 @@ function ctxEditCat() {
   const cats = getCats();
   if (cats.includes(trimmed)) { alert('分类已存在'); return; }
   renameCat(oldName, trimmed);
-  userData[dashTab].forEach(i => { if (i.cat === oldName) i.cat = trimmed; });
+  userData[dashTab].forEach(i => {
+    if (i.cats) {
+      i.cats = i.cats.map(c => c === oldName ? trimmed : c);
+    } else if (i.cat === oldName) {
+      i.cat = trimmed;
+    }
+  });
   saveUserData();
   if (dashCat === oldName) dashCat = trimmed;
   renderDashboard();
@@ -1095,32 +1177,27 @@ function ctxDeleteCat() {
 
 function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
 
+
+
 function saveItem() {
   const tab = dashTab;
 
-  let cat;
+  let cats = [];
   if (tab !== 'projects') {
-    const sel = document.getElementById('mfCat');
-    if (sel.value === '__custom__') {
-      cat = document.getElementById('mfCatName').value.trim();
-      if (!cat) { alert('请输入分类名称'); return; }
-      if (!userData.categories || !userData.categories.includes(cat)) {
-        addCat(cat);
-      }
-    } else {
-      cat = sel.value;
-    }
+    const checks = document.querySelectorAll('.cat-check:checked');
+    checks.forEach(cb => cats.push(cb.value));
+    if (cats.length === 0) cats = ['默认分组'];
   }
 
   let item;
   if (tab === 'knowledge') {
-    item = { id: editingId || Date.now(), cat, title: document.getElementById('mfTitle').value.trim(), subtitle: document.getElementById('mfSub').value.trim(), detail: document.getElementById('mfDetail').value };
+    item = { id: editingId || Date.now(), cats: cats, title: document.getElementById('mfTitle').value.trim(), subtitle: document.getElementById('mfSub').value.trim(), detail: document.getElementById('mfDetail').value };
     if (!item.title) { alert('请输入标题'); return; }
   } else if (tab === 'projects') {
     item = { id: editingId || Date.now(), year: document.getElementById('mfYear').value.trim(), title: document.getElementById('mfTitle').value.trim(), role: document.getElementById('mfRole').value.trim(), detail: document.getElementById('mfDetail').value };
     if (!item.title) { alert('请输入项目名称'); return; }
   } else {
-    item = { id: editingId || Date.now(), cat, q: document.getElementById('mfQ').value.trim(), a: document.getElementById('mfA').value };
+    item = { id: editingId || Date.now(), cats: cats, q: document.getElementById('mfQ').value.trim(), a: document.getElementById('mfA').value };
     if (!item.q) { alert('请输入问题'); return; }
   }
 
@@ -1137,9 +1214,75 @@ function saveItem() {
 
 function deleteItem(tab, id) {
   if (!confirm('确定删除？')) return;
+  if (tab === 'knowledge') {
+    const item = userData.knowledge.find(i => i.id === id);
+    if (item && item.syncedFrom) {
+      userData.syncedPublicIds = userData.syncedPublicIds.filter(pid => pid !== item.syncedFrom);
+    }
+  }
   userData[tab] = userData[tab].filter(i => i.id !== id);
   saveUserData();
   renderDashboard();
+}
+
+// ============================================================
+// PUBLIC SYNC
+// ============================================================
+function syncAllPublic() {
+  if (!confirm('将所有公共知识同步到个人知识库？')) return;
+  let count = 0;
+  publicKnowledge.forEach(pk => {
+    if (!userData.syncedPublicIds.includes(pk.id)) {
+      const newId = Date.now() + count;
+      userData.knowledge.push({ id: newId, cats: pk.cats || [pk.cat], title: pk.title, subtitle: pk.subtitle, detail: pk.detail, syncedFrom: pk.id });
+      userData.syncedPublicIds.push(pk.id);
+      count++;
+    }
+  });
+  if (count === 0) { alert('没有新内容可同步'); return; }
+  if (!userData.knowledgeCats.includes('公共知识')) { userData.knowledgeCats.push('公共知识'); }
+  // Also add any synced categories
+  publicKnowledge.forEach(pk => {
+    if (!userData.syncedPublicIds.includes(pk.id)) return;
+    if (!userData.knowledgeCats.includes(pk.cat)) userData.knowledgeCats.push(pk.cat);
+  });
+  saveUserData();
+  renderPublic();
+  alert('已同步 ' + count + ' 条到个人知识库');
+}
+
+function updateSyncBtn() {
+  const checked = document.querySelectorAll('.sync-check:checked').length;
+  const btn = document.getElementById('btnSyncSelected');
+  if (btn) btn.style.display = checked > 0 ? '' : 'none';
+}
+
+function syncSelectedPublic() {
+  const checks = document.querySelectorAll('.sync-check:checked');
+  if (checks.length === 0) return;
+  let count = 0;
+  checks.forEach(cb => {
+    const id = parseInt(cb.value);
+    const pk = publicKnowledge.find(p => p.id === id);
+    if (pk && !userData.syncedPublicIds.includes(id)) {
+      const newId = Date.now() + count;
+      userData.knowledge.push({ id: newId, cats: pk.cats || [pk.cat], title: pk.title, subtitle: pk.subtitle, detail: pk.detail, syncedFrom: id });
+      userData.syncedPublicIds.push(id);
+      count++;
+    }
+  });
+  if (count === 0) { alert('所选内容已同步过'); return; }
+  if (!userData.knowledgeCats.includes('公共知识')) { userData.knowledgeCats.push('公共知识'); }
+  // Also add any synced categories
+  checks.forEach(cb => {
+    const pk = publicKnowledge.find(p => p.id === parseInt(cb.value));
+    if (pk && userData.syncedPublicIds.includes(pk.id) && !userData.knowledgeCats.includes(pk.cat)) {
+      userData.knowledgeCats.push(pk.cat);
+    }
+  });
+  saveUserData();
+  renderPublic();
+  alert('已同步 ' + count + ' 条到个人知识库');
 }
 
 // ============================================================
@@ -1163,7 +1306,14 @@ function deleteCategory(name) {
   let msg = '确定删除分类「' + name + '」？';
   if (count > 0) msg += '\n\n该分类下有 ' + count + ' 条内容，删除后内容将移至「默认分组」。';
   if (!confirm(msg)) return;
-  userData[dashTab].forEach(i => { if (i.cat === name) i.cat = '默认分组'; });
+  userData[dashTab].forEach(i => {
+    if (i.cats) {
+      i.cats = i.cats.filter(c => c !== name);
+      if (i.cats.length === 0) i.cats = ['默认分组'];
+    } else if (i.cat === name) {
+      i.cat = '默认分组';
+    }
+  });
   removeCat(name);
   if (dashCat === name) dashCat = 'all';
   saveUserData();
