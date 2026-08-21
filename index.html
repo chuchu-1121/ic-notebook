@@ -25,6 +25,23 @@
   --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
 }
 
+/* Light theme */
+[data-theme="light"] {
+  --bg: #f5f6f8;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f0f1f5;
+  --bg-input: #ffffff;
+  --text: #4a4d5a;
+  --text-dim: #9a9dae;
+  --text-bright: #1a1d28;
+  --accent: #16a34a;
+  --accent2: #2563eb;
+  --accent3: #d97706;
+  --border: #e2e4e9;
+  --border-hover: #c8cad4;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -93,6 +110,23 @@ body {
   font-size: 0.9rem;
   pointer-events: none;
 }
+
+/* Theme Toggle */
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.theme-toggle:hover { border-color: var(--border-hover); background: var(--bg-card-hover); }
 
 /* Tabs */
 .tabs {
@@ -433,6 +467,7 @@ body {
       <span class="chip">🔲</span> IC Notebook
       <span>· 知识库</span>
     </div>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
       <input type="text" id="searchInput" placeholder="搜索知识点、项目、面试题…" oninput="doSearch()">
@@ -1175,7 +1210,22 @@ function doSearch() {
   render();
 }
 
+// Theme toggle
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.querySelector('.theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '☀️' : '🌙';
+  localStorage.setItem('theme', theme);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
 // Init
+const savedTheme = localStorage.getItem('theme') || 'dark';
+applyTheme(savedTheme);
 render();
 </script>
 </body>
