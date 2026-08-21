@@ -385,7 +385,7 @@ body {
     </div>
   </div>
 
-  <div class="feature-grid">
+  <div class="feature-grid" id="homeFeatures" style="display:none">
     <div class="feature-card"><div class="f-icon">📚</div><h3>知识库</h3><p>按技术领域分类管理 IC 设计知识点，支持增删改查</p></div>
     <div class="feature-card"><div class="f-icon">📋</div><h3>项目复盘</h3><p>时间线记录工作经历，沉淀经验</p></div>
     <div class="feature-card"><div class="f-icon">⚡</div><h3>面试速查</h3><p>翻转卡片复习高频考点，按分类筛选</p></div>
@@ -871,9 +871,11 @@ function toggleTheme() {
 // ============================================================
 let publicCat = 'all';
 function renderPublic() {
-  // Show hero only when not logged in
+  // Show hero and features only when not logged in
   const hero = document.getElementById('homeHero');
   if (hero) hero.style.display = currentUser ? 'none' : 'block';
+  const features = document.getElementById('homeFeatures');
+  if (features) features.style.display = currentUser ? 'none' : 'grid';
 
   const cats = [
     { key:'all', label:'全部' }, { key:'verilog', label:'Verilog' },
