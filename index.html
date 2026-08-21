@@ -113,7 +113,7 @@ body {
 
 /* Theme Toggle */
 .theme-toggle {
-  background: none;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 50%;
   width: 36px;
@@ -125,6 +125,8 @@ body {
   justify-content: center;
   transition: all 0.2s;
   flex-shrink: 0;
+  color: var(--text-bright);
+  line-height: 1;
 }
 .theme-toggle:hover { border-color: var(--border-hover); background: var(--bg-card-hover); }
 
