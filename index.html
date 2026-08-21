@@ -772,7 +772,6 @@ function clearAuthForms() {
 }
 
 function loadUserData() {
-  alert('loadUserData called, systemId=' + (currentUser ? currentUser.systemId : 'null'));
   const key = 'ic_data_' + currentUser.systemId;
   try {
     const d = JSON.parse(localStorage.getItem(key) || '{}');
@@ -817,7 +816,7 @@ function showView(name) {
   updateHeader();
   if (name === 'home') { renderPublic(); }
   if (name === 'auth') { document.getElementById('loginUser').focus(); }
-  if (name === 'dash') { try { renderDashboard(); } catch(e) { alert('Dashboard error: ' + e.message + '\n' + e.stack); } }
+  if (name === 'dash') { loadUserData(); renderDashboard(); }
 }
 
 function updateHeader() {
@@ -1013,7 +1012,6 @@ function switchDashTab(tab) {
 }
 
 function renderDashboard() {
-  if (!userData[dashTab]) { alert('Error: userData.' + dashTab + ' is undefined'); return; }
   const query = (document.getElementById('dashSearch')?.value || '').toLowerCase().trim();
   const cats = getCats();
 
