@@ -809,6 +809,7 @@ function saveUserData() {
 // VIEW NAVIGATION
 // ============================================================
 function showView(name) {
+  alert('showView called with: ' + name);
   currentView = name;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const v = document.getElementById('view-' + name);
@@ -1021,7 +1022,7 @@ function renderDashboard() {
     const cats = i.cats || (i.cat ? [i.cat] : []);
     return cats.includes(dashCat);
   });
-  alert('dashTab=' + dashTab + ' userData[dashTab]=' + JSON.stringify(userData[dashTab]) + ' items.length=' + items.length);
+
   if (query) {
     items = items.filter(i => (i.title || i.q || '').toLowerCase().includes(query) || (i.subtitle || i.role || '').toLowerCase().includes(query) || (i.detail || i.a || '').toLowerCase().includes(query));
   }
