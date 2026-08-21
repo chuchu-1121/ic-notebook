@@ -487,7 +487,7 @@ body {
   </div>
   <div class="filter-bar" id="dashFilter"></div>
   <div class="search-wrap"><span class="s-icon">🔍</span><input type="text" id="dashSearch" placeholder="搜索..." oninput="renderDashboard()"></div>
-  <div id="dashContent"><p style="color:red">TEST - dashboard content area</p></div>
+  <div id="dashContent"></div>
 </div>
 
 <!-- Edit Modal -->
@@ -1012,6 +1012,8 @@ function switchDashTab(tab) {
 }
 
 function renderDashboard() {
+  const dc = document.getElementById('dashContent');
+  if (!dc) { alert('dashContent not found!'); return; }
   const query = (document.getElementById('dashSearch')?.value || '').toLowerCase().trim();
   const cats = getCats();
 
