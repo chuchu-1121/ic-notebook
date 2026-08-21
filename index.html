@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IC 知识库 · 项目复盘 · 面试速查</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --bg-card: #1a1d28;
+  --bg-card-hover: #22263a;
+  --bg-input: #1a1d28;
+  --text: #c8ccd4;
+  --text-dim: #7a7f8e;
+  --text-bright: #e8ecf2;
+  --accent: #4ade80;
+  --accent2: #60a5fa;
+  --accent3: #f59e0b;
+  --border: #2a2d3a;
+  --border-hover: #3a3d4a;
+  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.logo {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo .chip { font-size: 1.4rem; }
+.logo span { color: var(--accent); }
+
+/* Search */
+.search-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 320px;
+  min-width: 200px;
+}
+.search-wrap input {
+  width: 100%;
+  padding: 8px 14px 8px 36px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-wrap input:focus { border-color: var(--accent); }
+.search-wrap .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 4px;
+  margin: 0 auto;
+  max-width: 1100px;
+  width: calc(100% - 48px);
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active {
+  background: var(--bg-card);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Main */
+.main {
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 0 24px;
+}
+
+/* Category Filter */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.filter-chip {
+  padding: 5px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.filter-chip:hover { border-color: var(--border-hover); color: var(--text); }
+.filter-chip.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Knowledge Cards */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+.knowledge-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.knowledge-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow); }
+.knowledge-card.expanded { border-color: var(--accent); }
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.card-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tag-riscv { background: rgba(74,222,128,0.15); color: var(--accent); }
+.tag-arm { background: rgba(96,165,250,0.15); color: var(--accent2); }
+.tag-debug { background: rgba(245,158,11,0.15); color: var(--accent3); }
+.tag-integration { background: rgba(168,85,247,0.15); color: #a855f7; }
+.tag-bus { background: rgba(236,72,153,0.15); color: #ec4899; }
+.tag-other { background: rgba(148,163,184,0.15); color: #94a3b8; }
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 10px 0 4px;
+}
+.card-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.card-detail {
+  display: none;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+.knowledge-card.expanded .card-detail { display: block; }
+.card-detail h4 {
+  color: var(--accent);
+  font-size: 0.85rem;
+  margin: 12px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.card-detail h4:first-child { margin-top: 0; }
+.card-detail ul {
+  margin: 4px 0 0 18px;
+  color: var(--text);
+}
+.card-detail li { margin-bottom: 2px; }
+.card-detail code {
+  font-family: var(--font-mono);
+  background: rgba(255,255,255,0.06);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.85em;
+  color: var(--accent2);
+}
+
+/* Projects Timeline */
+.timeline {
+  position: relative;
+  padding-left: 32px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.timeline-item:hover { border-color: var(--border-hover); }
+.timeline-item.expanded { border-color: var(--accent2); }
+.timeline-dot {
+  position: absolute;
+  left: -25px;
+  top: 24px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent2);
+  border: 2px solid var(--bg);
+}
+.timeline-year {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent2);
+  text-transform: uppercase;
+}
+.timeline-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 4px 0;
+}
+.timeline-role {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.timeline-detail {
+  display: none;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.timeline-item.expanded .timeline-detail { display: block; }
+.timeline-detail h4 {
+  color: var(--accent2);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 10px 0 4px;
+}
+.timeline-detail h4:first-child { margin-top: 0; }
+
+/* Flash Cards */
+.flash-filter {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.flash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+.flash-card {
+  perspective: 800px;
+  height: 200px;
+  cursor: pointer;
+}
+.flash-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s;
+  transform-style: preserve-3d;
+}
+.flash-card.flipped .flash-inner { transform: rotateY(180deg); }
+.flash-front, .flash-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid var(--border);
+}
+.flash-front {
+  background: var(--bg-card);
+  text-align: center;
+}
+.flash-front .flash-q {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+.flash-front .flash-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+.flash-back {
+  background: var(--bg-card);
+  transform: rotateY(180deg);
+  overflow-y: auto;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+.flash-back h4 { color: var(--accent); font-size: 0.8rem; margin: 8px 0 4px; }
+.flash-back h4:first-child { margin-top: 0; }
+.flash-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-dim);
+}
+.empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+.empty-state p { font-size: 0.95rem; }
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header-inner { flex-direction: column; align-items: flex-start; }
+  .search-wrap { max-width: 100%; }
+  .cards-grid { grid-template-columns: 1fr; }
+  .flash-grid { grid-template-columns: 1fr; }
+  .tabs { width: calc(100% - 24px); }
+  .tab-btn { font-size: 0.85rem; padding: 8px 12px; }
+}
+
+/* Fade in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.cards-grid > *, .timeline-item, .flash-card {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Summary bar */
+.summary-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <span class="chip">🔲</span> IC Notebook
+      <span>· 知识库</span>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="搜索知识点、项目、面试题…" oninput="doSearch()">
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('knowledge')">📚 知识库</button>
+  <button class="tab-btn" onclick="switchTab('projects')">📋 项目复盘</button>
+  <button class="tab-btn" onclick="switchTab('flashcards')">⚡ 速查卡</button>
+</div>
+
+<div class="main" id="mainContent"></div>
+
+<div class="footer">
+  IC Notebook · 个人知识管理 & 面试备战工具 · 点击卡片展开详情
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+
+const knowledgeData = [
+  {
+    id: 1,
+    cat: 'riscv',
+    tag: 'RISC-V',
+    tagClass: 'tag-riscv',
+    title: 'PLIC 中断优先级与仲裁机制',
+    subtitle: '玄铁 / SiFive PLIC 对比',
+    detail: `<h4>核心概念</h4>
+<p>PLIC（Platform-Level Interrupt Controller）负责管理外部中断源，将中断路由到多个 Hart，支持优先级仲裁。</p>
+<h4>玄铁 PLIC 特点</h4>
+<ul>
+  <li>支持 <code>N_SOURCES</code> 个中断源，<code>N_CONTEXTS</code> 个上下文</li>
+  <li>优先级寄存器：<code>priority[source_id]</code>，值越大优先级越高（0 表示禁用）</li>
+  <li>Threshold 寄存器：<code>threshold[context_id]</code>，低于此优先级的中断被屏蔽</li>
+  <li>Claim/Complete 机制：claim 读取 <code>claim_complete[context_id]</code>，complete 写回相同值</li>
+</ul>
+<h4>SiFive PLIC 差异</h4>
+<ul>
+  <li>寄存器布局略有不同，但功能等效</li>
+  <li>SiFive 额外提供 <code>MSIP</code> 软件中断支持（通常结合 CLINT）</li>
+</ul>
+<h4>面试要点</h4>
+<ul>
+  <li>Claim/Complete 流程的作用：防止中断丢失，保证中断被处理</li>
+  <li>优先级相同时，中断源 ID 小的优先</li>
+  <li>Threshold = 0 时允许所有中断；Threshold = max 屏蔽所有中断</li>
+</ul>`
+  },
+  {
+    id: 2,
+    cat: 'riscv',
+    tag: 'RISC-V',
+    tagClass: 'tag-riscv',
+    title: 'CLINT 定时器与软件中断',
+    subtitle: 'Machine Timer / MSIP 机制',
+    detail: `<h4>核心概念</h4>
+<p>CLINT（Core-Local Interruptor）提供每个 Hart 的本地中断：软件中断（MSIP）和定时器中断（MTIP）。</p>
+<h4>寄存器</h4>
+<ul>
+  <li><code>msip[hart_id]</code>：软件中断挂起位，写 1 触发，写 0 清除</li>
+  <li><code>mtimecmp[hart_id]</code>：定时器比较值，当 <code>mtime >= mtimecmp</code> 时触发 MTIP</li>
+  <li><code>mtime</code>：全局 64 位计数器，按固定频率递增</li>
+</ul>
+<h4>玄铁实现注意事项</h4>
+<ul>
+  <li>mtime 通常由外部时钟源驱动，频率需查阅 SoC 手册</li>
+  <li>mtimecmp 写入后不是立即生效（可能有 1-2 周期延迟）</li>
+</ul>
+<h4>面试要点</h4>
+<ul>
+  <li>CLINT vs PLIC 区别：CLINT 是 core-local，PLIC 是 platform-level</li>
+  <li>软件中断的典型用途：核间通信（IPI）</li>
+  <li>定时器中断的典型用途：OS 调度 tick</li>
+</ul>`
+  },
+  {
+    id: 3,
+    cat: 'arm',
+    tag: 'ARM',
+    tagClass: 'tag-arm',
+    title: 'GIC700 架构概览',
+    subtitle: 'Distributor / Redistributor / CPU Interface',
+    detail: `<h4>GICv3/v4 架构层次</h4>
+<ul>
+  <li><strong>Distributor</strong>：全局中断管理，优先级配置，中断分组</li>
+  <li><strong>Redistributor</strong>：per-PE 中断管理，LPIs（Locality-specific Peripheral Interrupts）</li>
+  <li><strong>CPU Interface</strong>：每个 PE 的中断接口，优先级掩码，EOI</li>
+</ul>
+<h4>中断类型</h4>
+<ul>
+  <li><strong>SGI</strong>（Software Generated Interrupt）：核间中断，ID 0-15</li>
+  <li><strong>PPI</strong>（Private Peripheral Interrupt）：per-PE 外设中断，ID 16-31</li>
+  <li><strong>SPI</strong>（Shared Peripheral Interrupt）：共享外设中断，ID 32-1019</li>
+  <li><strong>LPI</strong>（Locality-specific Peripheral Interrupt）：基于 ITS 的消息中断，ID 8192+</li>
+</ul>
+<h4>GIC700 特点</h4>
+<ul>
+  <li>支持 GICv4.1，含虚拟化扩展</li>
+  <li>支持 ITS（Interrupt Translation Service）用于 MSI/MSI-X</li>
+  <li>支持 <code>nVHE</code>（non-VHE）/ <code>VHE</code>（Virtualization Host Extensions）</li>
+</ul>
+<h4>与 RISC-V PLIC 对比</h4>
+<ul>
+  <li>GIC 更复杂，支持更多中断类型和虚拟化</li>
+  <li>GIC 使用 ITS 处理 MSI，PLIC 通常用 wire 连接</li>
+  <li>GIC 的 Affinity Routing 比 PLIC 的 context 机制更灵活</li>
+</ul>`
+  },
+  {
+    id: 4,
+    cat: 'debug',
+    tag: 'Debug',
+    tagClass: 'tag-debug',
+    title: 'RISC-V Debug Module 集成',
+    subtitle: 'JTAG / DMI / Abstract Command',
+    detail: `<h4>核心组件</h4>
+<ul>
+  <li><strong>DTM</strong>（Debug Transport Module）：JTAG 到 DMI 的桥接</li>
+  <li><strong>DMI</strong>（Debug Module Interface）：DTM 与 DM 间的总线</li>
+  <li><strong>DM</strong>（Debug Module）：核心调试逻辑</li>
+</ul>
+<h4>Abstract Command 机制</h4>
+<ul>
+  <li>通过 <code>command</code> 寄存器发送抽象命令</li>
+  <li>支持 GPR 读写、CSR 访问、内存访问</li>
+  <li><code>abstractcs</code> 的 <code>busy</code> 位表示命令执行中</li>
+</ul>
+<h4>系统集成要点</h4>
+<ul>
+  <li>DM 需要访问系统总线（System Bus Access）</li>
+  <li>Halt/Run 控制：<code>haltreq</code> / <code>resumereq</code></li>
+  <li>Hart 选择：<code>hartsel</code> 寄存器</li>
+  <li>复位控制：<code>ndmreset</code> / <code>dmactive</code></li>
+</ul>
+<h4>玄铁 Debug 特点</h4>
+<ul>
+  <li>支持 Trigger Module（硬件断点）</li>
+  <li>支持 Program Buffer（批量执行指令）</li>
+</ul>`
+  },
+  {
+    id: 5,
+    cat: 'riscv',
+    tag: 'RISC-V',
+    tagClass: 'tag-riscv',
+    title: 'RISC-V AIA 高级中断架构',
+    subtitle: 'IMSIC / APLIC 对比传统 PLIC+CLINT',
+    detail: `<h4>AIA 动机</h4>
+<p>传统 PLIC+CLINT 组合在虚拟化、MSI 支持、多 Hart 扩展方面存在局限。AIA 提供更现代化的中断架构。</p>
+<h4>核心组件</h4>
+<ul>
+  <li><strong>IMSIC</strong>（Incoming MSI Controller）：per-Hart MSI 控制器，支持虚拟化</li>
+  <li><strong>APLIC</strong>（Advanced PLIC）：wire 中断控制器，支持 MSI 转换</li>
+  <li><strong>Duo-Plat</strong>：同时支持 wired 和 MSI 的混合模式</li>
+</ul>
+<h4>与传统方案的对比</h4>
+<ul>
+  <li>PLIC → APLIC：保留了 wired 中断支持，增加了 MSI 转发能力</li>
+  <li>CLINT → IMSIC：软件中断和定时器中断通过 MSI 传递</li>
+  <li>核心优势：更好的虚拟化支持（Guest Interrupt Files）</li>
+</ul>
+<h4>面试要点</h4>
+<ul>
+  <li>AIA 如何支持虚拟化：通过 Guest Interrupt File（GIF）</li>
+  <li>IMSIC 的地址空间：每个 Hart 有独立的 MSI 地址范围</li>
+  <li>与传统 PLIC 的向后兼容性</li>
+</ul>`
+  },
+  {
+    id: 6,
+    cat: 'integration',
+    tag: '系统集成',
+    tagClass: 'tag-integration',
+    title: 'ap_system 中断子系统集成',
+    subtitle: 'AP 系统的中断路由与连接',
+    detail: `<h4>系统概述</h4>
+<p>ap_system（Application Processor System）通常是应用处理器核心所在，包含多个 Hart 和完整的中断子系统。</p>
+<h4>中断控制器集成要点</h4>
+<ul>
+  <li><strong>PLIC 连接</strong>：所有外部中断源接入 PLIC 的 <code>int_src</code></li>
+  <li><strong>CLINT 连接</strong>：每个 Hart 的 <code>mtip</code> / <code>msip</code> 连接到核心的对应中断输入</li>
+  <li><strong>Debug 连接</strong>：DM 需要接入系统总线，Debug 中断路由到 <code>hartsel</code> 选中的 Hart</li>
+</ul>
+<h4>常见集成挑战</h4>
+<ul>
+  <li>中断数量超出 PLIC 支持上限时的解决方案</li>
+  <li>跨时钟域中断的同步处理</li>
+  <li>中断优先级分配策略</li>
+  <li>与其他 IP（如 DMA、Security）的中断交互</li>
+</ul>`
+  },
+  {
+    id: 7,
+    cat: 'bus',
+    tag: '总线',
+    tagClass: 'tag-bus',
+    title: 'AXI 总线协议要点',
+    subtitle: '读写通道 / Outstanding / Out-of-Order',
+    detail: `<h4>AXI 通道结构</h4>
+<ul>
+  <li><strong>写地址通道</strong>（AW）：AWID, AWADDR, AWLEN, AWSIZE, AWBURST</li>
+  <li><strong>写数据通道</strong>（W）：WDATA, WSTRB, WLAST, WID</li>
+  <li><strong>写响应通道</strong>（B）：BID, BRESP</li>
+  <li><strong>读地址通道</strong>（AR）：ARID, ARADDR, ARLEN, ARSIZE, ARBURST</li>
+  <li><strong>读数据通道</strong>（R）：RDATA, RID, RLAST, RRESP</li>
+</ul>
+<h4>关键概念</h4>
+<ul>
+  <li><strong>Outstanding</strong>：无需等待前一笔完成即可发出新事务</li>
+  <li><strong>Out-of-Order</strong>：响应顺序可与请求顺序不同（通过 ID 匹配）</li>
+  <li><strong>Burst 类型</strong>：FIXED / INCR / WRAP</li>
+</ul>
+<h4>IC 设计中常见问题</h4>
+<ul>
+  <li>ID 位宽不够导致 Outstanding 受限</li>
+  <li>跨 4KB 边界时的 burst 处理</li>
+  <li>WSTRB 非连续时的处理</li>
+</ul>`
+  },
+  {
+    id: 8,
+    cat: 'integration',
+    tag: '系统集成',
+    tagClass: 'tag-integration',
+    title: 'se_system 安全子系统集成',
+    subtitle: 'Security Element 的中断与隔离',
+    detail: `<h4>se_system 概述</h4>
+<p>se_system（Security Element System）通常负责安全启动、密钥管理、加密引擎等安全功能，与 ap_system 通过安全总线隔离。</p>
+<h4>中断集成要点</h4>
+<ul>
+  <li>SE 可能有独立的 PLIC 实例，或与 AP 共享 PLIC</li>
+  <li>安全中断（如篡改检测）需要最高优先级和不可屏蔽特性</li>
+  <li>AP ↔ SE 通信通常通过门铃（doorbell）中断实现</li>
+</ul>
+<h4>隔离机制</h4>
+<ul>
+  <li>物理隔离：独立的电源域和时钟域</li>
+  <li>总线隔离：通过 Firewall/MPU 限制访问</li>
+  <li>中断隔离：安全中断不可被非安全世界屏蔽</li>
+</ul>`
+  },
+  {
+    id: 9,
+    cat: 'riscv',
+    tag: 'RISC-V',
+    tagClass: 'tag-riscv',
+    title: 'SiFive SAINT 中断控制器',
+    subtitle: 'SiFive Advanced Interrupt Architecture',
+    detail: `<h4>SAINT 定位</h4>
+<p>SiFive SAINT 是 SiFive 对 RISC-V AIA 的实现，旨在替代传统 PLIC+CLINT 组合。</p>
+<h4>与传统 PLIC 的差异</h4>
+<ul>
+  <li>支持 MSI（Message Signaled Interrupts）</li>
+  <li>内置 IMSIC 功能，支持 per-Hart MSI 投递</li>
+  <li>更好的虚拟化支持</li>
+  <li>与 SiFive 处理器的深度耦合</li>
+</ul>
+<h4>集成注意事项</h4>
+<ul>
+  <li>需要配置正确的 MSI 地址映射</li>
+  <li>与软件栈（如 OpenSBI）的兼容性</li>
+  <li>与传统 PLIC 驱动的兼容模式</li>
+</ul>`
+  },
+  {
+    id: 10,
+    cat: 'other',
+    tag: '通用',
+    tagClass: 'tag-other',
+    title: 'CDC 跨时钟域处理',
+    subtitle: '同步器 / FIFO / 握手协议',
+    detail: `<h4>常见 CDC 方案</h4>
+<ul>
+  <li><strong>两级同步器</strong>（2-FF Synchronizer）：单 bit 信号同步，最常用</li>
+  <li><strong>异步 FIFO</strong>：多 bit 数据跨时钟域传输，使用格雷码指针</li>
+  <li><strong>握手协议</strong>：请求-应答机制，适合低频控制信号</li>
+</ul>
+<h4>中断相关 CDC 问题</h4>
+<ul>
+  <li>外部中断信号通常来自不同时钟域，需要同步</li>
+  <li>电平中断 vs 脉冲中断的同步策略不同</li>
+  <li>脉冲展宽：确保目标时钟域能捕获到</li>
+</ul>
+<h4>常见陷阱</h4>
+<ul>
+  <li>多 bit 信号直接用两级同步器 → 数据不一致</li>
+  <li>异步 FIFO 的满/空判断时机</li>
+  <li>复位信号也需要 CDC 处理</li>
+</ul>`
+  }
+];
+
+const projectData = [
+  {
+    id: 1,
+    year: '2025',
+    title: '下一代 AP SoC 中断子系统集成',
+    role: '负责 PLIC/CLINT/Debug 集成与验证',
+    detail: `<h4>项目规模</h4>
+<p>8 核 RISC-V 应用处理器，支持虚拟化，面向数据中心场景。</p>
+<h4>我的工作</h4>
+<ul>
+  <li>集成玄铁 PLIC（支持 256 中断源，8 context）</li>
+  <li>集成 CLINT（mtime 频率 10MHz）</li>
+  <li>集成 Debug Module（JTAG DTM + DMI）</li>
+  <li>中断路由表设计与验证</li>
+</ul>
+<h4>关键挑战</h4>
+<ul>
+  <li>中断延迟优化：从中断源到 Hart 响应 < 100ns</li>
+  <li>多 Hart 中断亲和性分配策略</li>
+  <li>Debug Module 在低功耗模式下的唤醒</li>
+</ul>
+<h4>经验教训</h4>
+<ul>
+  <li>PLIC threshold 配置不当导致中断丢失的教训</li>
+  <li>中断优先级分配需要和软件团队提前对齐</li>
+  <li>CDC 路径上需要充分的时序约束</li>
+</ul>`
+  },
+  {
+    id: 2,
+    year: '2024',
+    title: 'ARM GIC700 集成到异构 SoC',
+    role: '负责 GIC700 配置与中断路由设计',
+    detail: `<h4>项目规模</h4>
+<p>ARM Cortex-A78 + RISC-V 协处理器异构平台。</p>
+<h4>我的工作</h4>
+<ul>
+  <li>GIC700 Distributor / Redistributor 配置</li>
+  <li>ITS 配置（MSI 中断映射）</li>
+  <li>ARM 端与 RISC-V 端中断隔离设计</li>
+</ul>
+<h4>关键挑战</h4>
+<ul>
+  <li>GIC-700 的 ITS 表配置（Device Table / ITT / Collection Table）</li>
+  <li>LPI 中断的配置与调试</li>
+  <li>异构系统中断路由的正确性验证</li>
+</ul>
+<h4>经验教训</h4>
+<ul>
+  <li>GIC 的 ITS 缓存一致性问题需要特别关注</li>
+  <li>LPI 的 pending table 在内存中的布局影响性能</li>
+</ul>`
+  },
+  {
+    id: 3,
+    year: '2024',
+    title: '安全子系统（se_system）中断集成',
+    role: '负责安全域中断控制器集成与隔离验证',
+    detail: `<h4>项目规模</h4>
+<p>独立安全子系统，包含专用 PLIC 和安全总线。</p>
+<h4>我的工作</h4>
+<ul>
+  <li>安全域 PLIC 集成（独立于 AP PLIC）</li>
+  <li>AP ↔ SE 安全门铃中断设计</li>
+  <li>中断隔离验证</li>
+</ul>
+<h4>关键挑战</h4>
+<ul>
+  <li>安全中断不可被非安全域屏蔽</li>
+  <li>安全域中断与 AP 域中断的优先级协调</li>
+</ul>
+<h4>经验教训</h4>
+<ul>
+  <li>安全中断的优先级必须高于所有非安全中断</li>
+  <li>门铃中断的确认机制需要带安全属性</li>
+</ul>`
+  },
+  {
+    id: 4,
+    year: '2023',
+    title: 'RISC-V 调试子系统集成与验证',
+    role: '负责 Debug Module 集成与 OpenOCD 调试',
+    detail: `<h4>项目规模</h4>
+<p>4 核 RISC-V MCU 级别芯片，带 JTAG 调试接口。</p>
+<h4>我的工作</h4>
+<ul>
+  <li>DM 寄存器配置与验证</li>
+  <li>JTAG DTM 时序调试</li>
+  <li>OpenOCD 驱动适配</li>
+</ul>
+<h4>关键挑战</h4>
+<ul>
+  <li>JTAG 时钟频率与系统时钟的协调</li>
+  <li>Abstract Command 超时问题</li>
+</ul>
+<h4>经验教训</h4>
+<ul>
+  <li>DM 的 System Bus Access 需要正确的地址映射</li>
+  <li>hartsel 切换时需等待 hart 进入 halt 状态</li>
+</ul>`
+  },
+  {
+    id: 5,
+    year: '2023',
+    title: 'SiFive 中断方案评估与集成',
+    role: '参与 SiFive PLIC+CLINT+SAINT 评估',
+    detail: `<h4>项目规模</h4>
+<p>评估 SiFive 中断方案在新项目中的适用性。</p>
+<h4>我的工作</h4>
+<ul>
+  <li>SiFive PLIC/CLINT 与玄铁方案功能对比</li>
+  <li>SAINT 架构评估</li>
+  <li>驱动兼容性分析</li>
+</ul>
+<h4>关键发现</h4>
+<ul>
+  <li>SiFive PLIC 与玄铁 PLIC 在寄存器层面有差异，但功能等效</li>
+  <li>SAINT 对虚拟化支持更好，但软件栈成熟度不及 PLIC</li>
+</ul>
+<h4>经验教训</h4>
+<ul>
+  <li>IP 选型时需同时考虑硬件和软件生态</li>
+  <li>寄存器兼容性会直接影响 Linux 驱动工作量</li>
+</ul>`
+  },
+  {
+    id: 6,
+    year: '2022',
+    title: '首款 RISC-V 芯片中断子系统设计',
+    role: '初级工程师，参与 PLIC 基本集成',
+    detail: `<h4>项目规模</h4>
+<p>单核 RISC-V IoT 芯片，Simple PLIC 配置。</p>
+<h4>我的工作</h4>
+<ul>
+  <li>PLIC 基本寄存器配置</li>
+  <li>中断源连接与验证</li>
+  <li>基本中断功能测试</li>
+</ul>
+<h4>关键挑战</h4>
+<ul>
+  <li>首次接触 RISC-V 中断架构，学习曲线</li>
+  <li>中断优先级配置与期望不符</li>
+</ul>
+<h4>经验教训</h4>
+<ul>
+  <li>PLIC 的 priority 0 = 禁用，不是最低优先级</li>
+  <li>中断验证需要覆盖边界条件（优先级相同、阈值边界等）</li>
+</ul>`
+  }
+];
+
+const flashcardData = [
+  {
+    id: 1,
+    cat: 'riscv',
+    q: 'PLIC 的 Claim/Complete 流程是什么？',
+    a: `<p>当 Hart 响应中断后：</p>
+<ol>
+<li>读取 <code>claim_complete</code> 寄存器 → 得到中断源 ID，同时 PLIC 将该中断标记为"已响应"</li>
+<li>执行 ISR 处理中断</li>
+<li>写入 <code>claim_complete</code> 寄存器（写入中断源 ID）→ PLIC 将该中断标记为"已完成"，允许再次触发</li>
+</ol>
+<p><strong>关键</strong>：如果不写 complete，该中断源不会再触发（相当于被静默屏蔽）。</p>`
+  },
+  {
+    id: 2,
+    cat: 'riscv',
+    q: 'CLINT 和 PLIC 的区别？',
+    a: `<p><strong>CLINT</strong>（Core-Local Interruptor）：</p>
+<ul><li>每个 Hart 独立拥有</li>
+<li>产生软件中断（MSIP）和定时器中断（MTIP）</li>
+<li>寄存器：msip, mtimecmp, mtime</li></ul>
+<p><strong>PLIC</strong>（Platform-Level Interrupt Controller）：</p>
+<ul><li>全平台共享</li>
+<li>管理外部中断源，路由到多个 Hart</li>
+<li>寄存器：priority, threshold, claim/complete</li></ul>
+<p>简单记：CLINT 是"本地中断"，PLIC 是"全局中断"。</p>`
+  },
+  {
+    id: 3,
+    cat: 'arm',
+    q: 'GICv3 中 SGI / PPI / SPI / LPI 的区别？',
+    a: `<table style="width:100%;font-size:0.85rem;border-collapse:collapse">
+<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:4px">类型</th><th style="text-align:left;padding:4px">ID 范围</th><th style="text-align:left;padding:4px">范围</th><th style="text-align:left;padding:4px">用途</th></tr>
+<tr style="border-bottom:1px solid var(--border)"><td>SGI</td><td>0-15</td><td>per-PE</td><td>核间中断</td></tr>
+<tr style="border-bottom:1px solid var(--border)"><td>PPI</td><td>16-31</td><td>per-PE</td><td>私有外设</td></tr>
+<tr style="border-bottom:1px solid var(--border)"><td>SPI</td><td>32-1019</td><td>全局</td><td>共享外设</td></tr>
+<tr><td>LPI</td><td>8192+</td><td>per-Redistributor</td><td>MSI/MSI-X</td></tr>
+</table>
+<p>LPI 通过 ITS 配置，基于内存表而非寄存器。</p>`
+  },
+  {
+    id: 4,
+    cat: 'debug',
+    q: 'RISC-V Debug Module 的 Abstract Command 执行流程？',
+    a: `<ol>
+<li>调试器检测 <code>abstractcs.busy</code> == 0</li>
+<li>将命令写入 <code>command</code> 寄存器</li>
+<li>DM 执行命令，<code>abstractcs.busy</code> 置 1</li>
+<li>命令执行完成，<code>abstractcs.busy</code> 清 0</li>
+<li>若出错，<code>abstractcs.cmderr</code> 记录错误码</li>
+</ol>
+<p><strong>注意</strong>：Abstract Command 执行期间 Hart 必须处于 halt 状态。</p>`
+  },
+  {
+    id: 5,
+    cat: 'riscv',
+    q: 'AIA（IMSIC + APLIC）相比 PLIC + CLINT 的优势？',
+    a: `<ul>
+<li><strong>MSI 支持</strong>：IMSIC 原生支持 MSI，不需额外的 wire 连接</li>
+<li><strong>虚拟化</strong>：Guest Interrupt File（GIF）支持虚拟机中断直通</li>
+<li><strong>扩展性</strong>：per-Hart 的 IMSIC 文件，避免 PLIC 的 context 扩展瓶颈</li>
+<li><strong>中断投递</strong>：基于内存写入，而非硬件连线，更灵活</li>
+</ul>
+<p>但 APLIC 保留了 wired 中断支持，向后兼容传统方案。</p>`
+  },
+  {
+    id: 6,
+    cat: 'bus',
+    q: 'AXI 中 Outstanding 和 Out-of-Order 的区别？',
+    a: `<p><strong>Outstanding</strong>：</p>
+<ul><li>指 Master 可以连续发出多个事务，不必等前一个完成</li>
+<li>由 ID 位宽决定最大 Outstanding 数量</li></ul>
+<p><strong>Out-of-Order</strong>：</p>
+<ul><li>指 Slave 返回响应的顺序可以与请求顺序不同</li>
+<li>通过 ID 匹配请求和响应</li></ul>
+<p><strong>关系</strong>：Outstanding 是 Out-of-Order 的前提（没有并发请求就不存在乱序），但有 Outstanding 不一定有 Out-of-Order（取决于 Slave 实现）。</p>`
+  },
+  {
+    id: 7,
+    cat: 'integration',
+    q: '中断优先级分配的基本原则？',
+    a: `<ol>
+<li><strong>安全 > 功能</strong>：安全相关中断（篡改检测、安全故障）优先级最高</li>
+<li><strong>实时 > 非实时</strong>：有实时性要求的中断优先</li>
+<li><strong>数据完整性</strong>：DMA 完成、FIFO 溢出等中断优先级高于普通状态通知</li>
+<li><strong>同优先级按来源 ID</strong>：ID 小的优先</li>
+<li><strong>避免饥饿</strong>：低优先级中断不能永远得不到服务</li>
+</ol>
+<p>建议与软件团队联合评审中断优先级分配。</p>`
+  },
+  {
+    id: 8,
+    cat: 'other',
+    q: '跨时钟域（CDC）中断信号如何处理？',
+    a: `<p><strong>电平中断</strong>：</p>
+<ul><li>两级同步器即可（2-FF synchronizer）</li>
+<li>中断信号本身是电平，同步后不会丢失</li></ul>
+<p><strong>脉冲中断</strong>：</p>
+<ul><li>需要脉冲展宽器（Pulse Stretcher）</li>
+<li>确保脉冲宽度 > 目标时钟周期 × 2</li>
+<li>或使用异步 FIFO / 握手协议</li></ul>
+<p><strong>通用原则</strong>：</p>
+<ul><li>单 bit 控制信号：两级同步器</li>
+<li>多 bit 数据：异步 FIFO 或握手</li>
+<li>所有 CDC 路径需要 SDC 约束</li></ul>`
+  }
+];
+
+// ============================================================
+// RENDER
+// ============================================================
+let currentTab = 'knowledge';
+let activeCat = 'all';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.textContent.includes(tab === 'knowledge' ? '知识库' : tab === 'projects' ? '项目复盘' : '速查卡')) {
+      b.classList.add('active');
+    }
+  });
+  activeCat = 'all';
+  render();
+}
+
+function render() {
+  const main = document.getElementById('mainContent');
+  const query = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+
+  if (currentTab === 'knowledge') renderKnowledge(main, query);
+  else if (currentTab === 'projects') renderProjects(main, query);
+  else renderFlashcards(main, query);
+}
+
+function renderKnowledge(main, query) {
+  let items = knowledgeData;
+  if (query) {
+    items = items.filter(i =>
+      i.title.toLowerCase().includes(query) ||
+      i.subtitle.toLowerCase().includes(query) ||
+      i.detail.toLowerCase().includes(query) ||
+      i.tag.toLowerCase().includes(query)
+    );
+  }
+  if (activeCat !== 'all') {
+    items = items.filter(i => i.cat === activeCat);
+  }
+
+  const categories = [
+    { key: 'all', label: '全部' },
+    { key: 'riscv', label: 'RISC-V 中断' },
+    { key: 'arm', label: 'ARM 中断' },
+    { key: 'debug', label: 'Debug' },
+    { key: 'integration', label: '系统集成' },
+    { key: 'bus', label: '总线' },
+    { key: 'other', label: '通用' },
+  ];
+
+  let html = `<div class="filter-bar">`;
+  categories.forEach(c => {
+    html += `<button class="filter-chip${activeCat === c.key ? ' active' : ''}" onclick="setCat('${c.key}')">${c.label}</button>`;
+  });
+  html += `</div>`;
+  html += `<div class="summary-bar">共 ${items.length} 条知识点</div>`;
+
+  if (items.length === 0) {
+    html += `<div class="empty-state"><div class="icon">📭</div><p>没有找到匹配的知识点</p></div>`;
+  } else {
+    html += `<div class="cards-grid">`;
+    items.forEach(item => {
+      html += `
+        <div class="knowledge-card" id="kc-${item.id}" onclick="toggleCard('kc-${item.id}')">
+          <div class="card-header">
+            <span class="card-tag ${item.tagClass}">${item.tag}</span>
+          </div>
+          <div class="card-title">${item.title}</div>
+          <div class="card-subtitle">${item.subtitle}</div>
+          <div class="card-detail">${item.detail}</div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+
+  main.innerHTML = html;
+}
+
+function renderProjects(main, query) {
+  let items = projectData;
+  if (query) {
+    items = items.filter(i =>
+      i.title.toLowerCase().includes(query) ||
+      i.role.toLowerCase().includes(query) ||
+      i.detail.toLowerCase().includes(query) ||
+      i.year.includes(query)
+    );
+  }
+
+  let html = `<div class="summary-bar">共 ${items.length} 个项目（参与 6 款芯片设计）</div>`;
+
+  if (items.length === 0) {
+    html += `<div class="empty-state"><div class="icon">📋</div><p>没有找到匹配的项目</p></div>`;
+  } else {
+    html += `<div class="timeline">`;
+    items.forEach(p => {
+      html += `
+        <div class="timeline-item" id="pj-${p.id}" onclick="toggleCard('pj-${p.id}')">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">${p.year}</div>
+          <div class="timeline-title">${p.title}</div>
+          <div class="timeline-role">${p.role}</div>
+          <div class="timeline-detail">${p.detail}</div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+  main.innerHTML = html;
+}
+
+function renderFlashcards(main, query) {
+  let items = flashcardData;
+  if (query) {
+    items = items.filter(i =>
+      i.q.toLowerCase().includes(query) ||
+      i.a.toLowerCase().includes(query)
+    );
+  }
+  if (activeCat !== 'all') {
+    items = items.filter(i => i.cat === activeCat);
+  }
+
+  const categories = [
+    { key: 'all', label: '全部' },
+    { key: 'riscv', label: 'RISC-V' },
+    { key: 'arm', label: 'ARM' },
+    { key: 'debug', label: 'Debug' },
+    { key: 'bus', label: '总线' },
+    { key: 'integration', label: '系统集成' },
+    { key: 'other', label: '通用' },
+  ];
+
+  let html = `<div class="flash-filter">`;
+  categories.forEach(c => {
+    html += `<button class="filter-chip${activeCat === c.key ? ' active' : ''}" onclick="setCat('${c.key}')">${c.label}</button>`;
+  });
+  html += `</div>`;
+  html += `<div class="summary-bar">共 ${items.length} 张速查卡 · 点击翻转查看答案</div>`;
+
+  if (items.length === 0) {
+    html += `<div class="empty-state"><div class="icon">⚡</div><p>没有找到匹配的速查卡</p></div>`;
+  } else {
+    html += `<div class="flash-grid">`;
+    items.forEach(f => {
+      const tagMap = { riscv: 'tag-riscv', arm: 'tag-arm', debug: 'tag-debug', integration: 'tag-integration', bus: 'tag-bus', other: 'tag-other' };
+      const labelMap = { riscv: 'RISC-V', arm: 'ARM', debug: 'Debug', integration: '系统集成', bus: '总线', other: '通用' };
+      html += `
+        <div class="flash-card" id="fc-${f.id}" onclick="flipCard('fc-${f.id}')">
+          <div class="flash-inner">
+            <div class="flash-front">
+              <span class="flash-tag card-tag ${tagMap[f.cat] || 'tag-other'}">${labelMap[f.cat] || f.cat}</span>
+              <div class="flash-q">${f.q}</div>
+              <div class="flash-hint">👆 点击翻转查看答案</div>
+            </div>
+            <div class="flash-back">${f.a}</div>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+  main.innerHTML = html;
+}
+
+function setCat(cat) {
+  activeCat = cat;
+  render();
+}
+
+function toggleCard(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('expanded');
+}
+
+function flipCard(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('flipped');
+}
+
+function doSearch() {
+  activeCat = 'all';
+  render();
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
