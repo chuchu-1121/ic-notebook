@@ -1275,8 +1275,8 @@ function syncAllPublic() {
     if (!userData.knowledgeCats.includes(pk.cat)) userData.knowledgeCats.push(pk.cat);
   });
   saveUserData();
+  alert('已同步 ' + count + ' 条到个人知识库。knowledge数组长度: ' + userData.knowledge.length);
   renderPublic();
-  alert('已同步 ' + count + ' 条到个人知识库');
 }
 
 function updateSyncBtn() {
@@ -1309,8 +1309,8 @@ function syncSelectedPublic() {
     }
   });
   saveUserData();
+  alert('已同步 ' + count + ' 条到个人知识库。knowledge数组长度: ' + userData.knowledge.length);
   renderPublic();
-  alert('已同步 ' + count + ' 条到个人知识库');
 }
 
 // ============================================================
