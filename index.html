@@ -92,7 +92,37 @@ body {
 .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
 .btn-primary:hover { opacity: 0.85; }
 .btn-sm { padding: 4px 12px; font-size: 0.78rem; }
-.user-badge { color: var(--accent); font-weight: 600; font-size: 0.85rem; }
+.user-badge { color: var(--accent); font-weight: 600; font-size: 0.85rem; cursor: pointer; }
+#headerUser { position: relative; display: inline-block; }
+.user-dropdown {
+  position: absolute; top: calc(100% + 4px); right: 0;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 4px; z-index: 200;
+  display: none; box-shadow: var(--shadow); min-width: 100px; white-space: nowrap;
+}
+.user-dropdown.show { display: block; }
+.user-dropdown .dd-item {
+  padding: 6px 14px; font-size: 0.82rem; cursor: pointer; border-radius: 4px;
+  color: var(--text); transition: background 0.15s;
+}
+.user-dropdown .dd-item:hover { background: var(--bg-card-hover); }
+
+/* Avatar */
+.avatar-img {
+  width: 26px; height: 26px; border-radius: 50%; object-fit: cover;
+  vertical-align: middle; margin-right: 3px; border: 2px solid var(--accent);
+}
+.emoji-grid {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px;
+  max-height: 200px; overflow-y: auto;
+}
+.emoji-grid .emoji-item {
+  font-size: 1.5rem; text-align: center; cursor: pointer; padding: 4px;
+  border-radius: 6px; transition: background 0.15s;
+}
+.emoji-grid .emoji-item:hover { background: var(--bg-card-hover); }
+.emoji-grid .emoji-item.selected { background: var(--accent); }
+.av-preview { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); }
 
 /* ===== Main ===== */
 .main { max-width: 1100px; margin: 24px auto; padding: 0 24px; }
@@ -196,6 +226,7 @@ body {
 .tag-integration { background: rgba(168,85,247,0.15); color: #a855f7; }
 .tag-bus { background: rgba(236,72,153,0.15); color: #ec4899; }
 .tag-verilog { background: rgba(20,184,166,0.15); color: #14b8a6; }
+.tag-digital { background: rgba(99,102,241,0.15); color: #6366f1; }
 .tag-other { background: rgba(148,163,184,0.15); color: #94a3b8; }
 .card-title { font-size: 0.95rem; font-weight: 600; color: var(--text-bright); margin: 8px 0 2px; }
 .card-subtitle { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 6px; }
@@ -329,17 +360,24 @@ body {
   <div class="header-inner">
     <div class="logo" onclick="showView('home')" title="返回主页">🏠 IC Notebook <span>· 知识库</span></div>
     <div class="header-actions">
-      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="切换主题">🌙</button>
-      <span id="headerUser" style="display:none"></span>
+      <span id="headerUser" style="display:none" onclick="event.stopPropagation();toggleUserMenu()">
+        <span class="user-badge">👤 <span id="headerUserName"></span> ▾</span>
+        <div class="user-dropdown" id="userDropdown">
+          <div class="dd-item" onclick="showView('dash');switchDashTab('knowledge');hideUserMenu()">📂 个人空间</div>
+          <div class="dd-item" onclick="hideUserMenu();openAvatarModal()">🖼️ 设置头像</div>
+          <div class="dd-item" onclick="toggleTheme();hideUserMenu()">🌓 切换主题</div>
+          <div class="dd-item" onclick="doLogout()">🚪 退出登录</div>
+        </div>
+      </span>
       <button class="btn" id="btnLogin" onclick="showView('auth')">登录</button>
-      <button class="btn btn-sm" id="btnLogout" style="display:none" onclick="doLogout()">退出</button>
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="切换主题">🌙</button>
     </div>
   </div>
 </div>
 
 <!-- Homepage View -->
 <div class="main view active" id="view-home">
-  <div class="hero">
+  <div class="hero" id="homeHero" style="display:none">
     <h1>IC Notebook <span>· 知识库</span></h1>
     <p>面向数字 IC 设计工程师的个人知识管理与面试备战工具。支持知识卡片编辑、项目复盘追踪、面试速查卡翻转。</p>
     <div>
@@ -378,8 +416,9 @@ body {
       <h2>注册</h2>
       <div class="sub">创建你的个人知识库</div>
       <form onsubmit="doRegister();return false">
-      <div class="error" id="regError">用户名已存在</div>
-      <div class="field"><label>用户名</label><input type="text" id="regUser" placeholder="支持中文、字母、数字，3-20 位" autocomplete="off"></div>
+      <div class="error" id="regError">该 ID 已被使用</div>
+      <div class="field"><label>账号 ID</label><input type="text" id="regUser" placeholder="6-20 位字母、数字、下划线（用于登录）" autocomplete="off"></div>
+      <div class="field"><label>显示名</label><input type="text" id="regDisplayName" placeholder="1-20 位，支持中文，仅自己可见" autocomplete="off"></div>
       <div class="field"><label>密码</label><input type="password" id="regPass" placeholder="至少 6 位" autocomplete="new-password"></div>
       <div class="field"><label>确认密码</label><input type="password" id="regPass2" placeholder="再次输入密码" autocomplete="new-password"></div>
       <button class="btn btn-primary" type="submit">注册</button>
@@ -416,6 +455,33 @@ body {
   <div class="ctx-item danger" onclick="ctxDeleteCat()">🗑 删除</div>
 </div>
 
+<!-- Avatar Modal -->
+<div class="modal-overlay hidden" id="avatarOverlay">
+  <div class="modal">
+    <h3>🖼️ 设置头像</h3>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn btn-sm" id="avTabEmoji" onclick="switchAvatarTab('emoji')" style="background:var(--accent);color:#000;border-color:var(--accent)">Emoji</button>
+      <button class="btn btn-sm" id="avTabUrl" onclick="switchAvatarTab('url')">图片URL</button>
+      <button class="btn btn-sm" id="avTabUpload" onclick="switchAvatarTab('upload')">本地上传</button>
+    </div>
+    <div id="avEmoji">
+      <div class="emoji-grid" id="emojiGrid"></div>
+    </div>
+    <div id="avUrl" style="display:none">
+      <div class="field"><label>图片链接</label><input type="text" id="avUrlInput" placeholder="https://..."></div>
+      <div id="avUrlPreview" style="text-align:center;margin:8px 0"></div>
+    </div>
+    <div id="avUpload" style="display:none">
+      <div class="field"><label>选择本地图片</label><input type="file" id="avFileInput" accept="image/*" onchange="previewAvatarFile()"></div>
+      <div id="avFilePreview" style="text-align:center;margin:8px 0"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeAvatarModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveAvatar()">保存</button>
+    </div>
+  </div>
+</div>
+
 <div class="footer">IC Notebook · 个人知识管理 & 面试备战工具</div>
 
 <script>
@@ -435,6 +501,17 @@ const publicKnowledge = [
   { id:10, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'Verilog 语句块', subtitle:'begin-end / fork-join / 命名块', detail:'<h4>begin-end（顺序块）</h4><ul><li>语句按顺序执行</li><li>常用于 always 块、initial 块、task/function 体</li><li>综合时通常对应组合逻辑链或状态机</li></ul><h4>fork-join（并行块）</h4><ul><li>内部语句并行执行</li><li>不可综合，仅用于仿真</li><li>三个变体：fork-join（等所有完成）、fork-join_any（等任一完成）、fork-join_none（不等，立即继续）</li></ul><h4>命名块</h4><ul><li>begin : block_name ... end</li><li>可以声明局部变量（作用域限定在块内）</li><li>可以用 disable block_name 提前退出</li><li>综合时命名块主要用于 generate 和层级命名</li></ul>' },
   { id:11, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'RTL 代码常见坑', subtitle:'综合陷阱与仿真不一致', detail:'<h4>常见坑</h4><ul><li><strong>不完整敏感列表</strong>：always @(a) 缺少 b，仿真只在 a 变化时触发，综合成 latch 或与仿真不一致</li><li><strong>Latch 意外生成</strong>：if 缺少 else、case 缺少 default，组合逻辑中未覆盖所有分支 → 综合成 latch</li><li><strong>阻塞/非阻塞混用</strong>：同一块中混用 = 和 <=，仿真行为难预测</li><li><strong>多驱动</strong>：多个 always 块驱动同一变量 → 综合报错</li><li><strong>复位遗漏</strong>：时序逻辑中部分寄存器在 if(rst) 分支外有赋值，导致复位行为不一致</li><li><strong>宽度不匹配</strong>：隐式位宽扩展，如 {a, b} + c 与 a + b + c 结果不同</li><li><strong>for 循环展开过大</strong>：大循环在综合时展开成巨大组合逻辑，时序难收敛</li></ul><h4>检查方法</h4><ul><li>综合后检查 latch 报告</li><li>跑 lint 工具（SpyGlass、Verilator）</li><li>对比仿真与形式验证结果</li></ul>' },
   { id:12, cat:'verilog', tag:'Verilog', tagClass:'tag-verilog', title:'双向 inout 端口正确实现', subtitle:'三态门与总线协议', detail:'<h4>inout 端口本质</h4><p>双向端口在物理上对应的是一根既可用于输入也可用于输出的线，需要三态门控制。</p><h4>正确实现</h4><ul><li>用三态 buffer：<code>assign io_pin = oe ? out_val : 1\'bz;</code></li><li>oe（输出使能）= 1 时驱动输出，= 0 时高阻（外部驱动）</li><li>读取时：<code>assign in_val = io_pin;</code> 持续读取</li></ul><h4>关键注意事项</h4><ul><li>inout 只能出现在模块端口，不能作为 always 块的 reg 变量</li><li>顶层测试平台中 inout 需用 wire 类型</li><li>多个三态驱动可以共享同一根线（总线），但同一时刻只能有一个 oe=1</li><li>高阻态 z 在综合时自动映射为三态 buffer（仅顶层端口）</li><li>内部逻辑不能用 inout，需分解为 data_in、data_out、data_oe 三个信号</li></ul><h4>内部处理模式</h4><ul><li>顶层模块：inout 端口 + 三态逻辑</li><li>内部模块：分离的 input/output/enable 信号</li><li>例：I2C SDA 线——顶层三态驱动，内部用 sda_in/sda_out/sda_oe</li></ul>' }
+,
+  { id:13, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'Latch 与 Flip-Flop 的区别', subtitle:'电平触发 vs 边沿触发', detail:'<h4>Latch（锁存器）</h4><ul><li>电平触发：使能信号为高时，输出跟随输入变化（透明）</li><li>使能信号为低时，输出锁存上一次的值</li><li>面积更小，但时序分析困难</li><li>在标准单元库中通常不推荐使用</li></ul><h4>Flip-Flop（触发器）</h4><ul><li>边沿触发：仅在时钟上升沿（或下降沿）采样并更新</li><li>一个时钟周期只更新一次</li><li>时序分析清晰，主流设计首选</li></ul><h4>关键区别</h4><ul><li>Latch 在使能期间"透明"，毛刺会直接传播</li><li>FF 只在时钟沿采样，天然滤除毛刺</li><li>Latch 利于时序收敛（借时间），但 STA 困难</li><li>综合时意外生成 latch 是常见 bug（if 缺 else、case 缺 default）</li></ul>' },
+  { id:14, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'建立时间与保持时间', subtitle:'Setup / Hold Time', detail:'<h4>建立时间 Setup Time</h4><ul><li>时钟沿到来之前，数据必须保持稳定的最短时间</li><li>不满足 → 输出可能进入亚稳态或采样错误值</li><li>Tclk ≥ Tco + Tcomb + Tsetup + Tskew</li></ul><h4>保持时间 Hold Time</h4><ul><li>时钟沿到来之后，数据必须保持稳定的最短时间</li><li>不满足 → 数据可能被时钟沿"冲掉"</li><li>Thold ≤ Tco + Tcomb - Tskew</li></ul><h4>区别</h4><ul><li>Setup 与时钟频率有关（限制最大频率）</li><li>Hold 与时钟频率无关（限制最小延迟）</li><li>Setup 违例可通过降频修复，Hold 违例只能加 buffer 修</li></ul><h4>常见违例原因</h4><ul><li>Setup：组合逻辑路径太长、时钟偏斜过大</li><li>Hold：时钟树不平衡、数据路径太短（快路径）</li></ul>' },
+  { id:15, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'亚稳态', subtitle:'Metastability', detail:'<h4>什么是亚稳态</h4><p>当数据在时钟沿附近（setup/hold 窗口内）发生变化时，触发器输出可能进入一个不确定的中间电平状态，需要一段时间才能稳定到 0 或 1。</p><h4>危害</h4><ul><li>输出值不确定，可能既不是 0 也不是 1</li><li>下游逻辑可能读到不同的值（一部分读 0，一部分读 1）</li><li>导致系统功能错误，且难以复现</li></ul><h4>MTBF（平均无故障时间）</h4><ul><li>亚稳态无法完全避免，只能通过同步器降低概率</li><li>MTBF 与时钟频率、数据变化率、同步器级数有关</li><li>两级同步器可将 MTBF 提升到数百年级别</li></ul><h4>解决方案</h4><ul><li>两级同步器（2-FF）：最常用，用于单 bit 信号</li><li>多级同步器：进一步提高 MTBF</li><li>异步 FIFO：多 bit 数据跨时钟域</li></ul>' },
+  { id:16, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'同步复位 vs 异步复位', subtitle:'复位策略选择', detail:'<h4>同步复位</h4><ul><li>复位信号在时钟沿采样生效</li><li>优点：时序分析简单，无毛刺问题，与时钟同步</li><li>缺点：需要时钟运行才能复位，门数略多</li><li>代码：always @(posedge clk) if (!rst_n) q <= 0; else q <= d;</li></ul><h4>异步复位</h4><ul><li>复位信号直接生效，不等待时钟沿</li><li>优点：不需要时钟，复位速度快，门数更少</li><li>缺点：复位释放时可能与时钟沿冲突（复位恢复违例）</li><li>代码：always @(posedge clk or negedge rst_n) if (!rst_n) q <= 0; else q <= d;</li></ul><h4>异步复位同步释放（推荐）</h4><ul><li>复位输入异步生效，但释放时与时钟同步</li><li>避免复位恢复时的亚稳态</li><li>业界最常用的复位策略</li></ul>' },
+  { id:17, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'时钟门控', subtitle:'Clock Gating', detail:'<h4>原理</h4><p>在寄存器不需要更新时关断时钟，减少动态功耗。时钟树功耗通常占芯片总功耗的 30-50%。</p><h4>实现方式</h4><ul><li><strong>AND 门控</strong>：clk_gated = clk & en（简单但会产生毛刺，不推荐）</li><li><strong>Latch 门控</strong>：用低电平 latch + AND 门，在时钟低电平时锁存使能信号，避免毛刺（标准做法）</li><li><strong>ICG（Integrated Clock Gating Cell）</strong>：标准单元库提供的专用门控单元</li></ul><h4>注意事项</h4><ul><li>门控后的时钟需要单独做时钟树平衡</li><li>DFT 扫描测试时需要 bypass 门控</li><li>过度门控可能导致时钟树过于复杂</li></ul>' },
+  { id:18, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'流水线设计', subtitle:'Pipeline', detail:'<h4>原理</h4><p>将长组合逻辑路径切分为多个短路径，中间插入寄存器，提高时钟频率。</p><h4>优势</h4><ul><li>提高吞吐率（每周期可完成一个操作）</li><li>降低每级组合逻辑延迟，提高时钟频率</li><li>代价：增加延迟（latency）和面积（寄存器开销）</li></ul><h4>流水线级数计算</h4><ul><li>Tclk ≥ Tco + Tcomb/N + Tsetup</li><li>N 越大，频率越高，但 latency 也越大</li></ul><h4>常见问题</h4><ul><li>流水线冒险：数据相关导致停顿（RAW、WAR、WAW）</li><li>控制冒险：分支预测失败导致流水线冲刷</li><li>流水线平衡：各级延迟应尽量均匀</li></ul>' },
+  { id:19, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'状态机设计', subtitle:'Moore / Mealy FSM', detail:'<h4>Moore 状态机</h4><ul><li>输出仅取决于当前状态</li><li>输出与输入变化隔离，更稳定</li><li>状态数通常比 Mealy 多</li></ul><h4>Mealy 状态机</h4><ul><li>输出取决于当前状态 + 输入</li><li>输入变化立即影响输出（可能产生毛刺）</li><li>状态数通常更少，响应更快</li></ul><h4>编码方式</h4><ul><li>二进制编码：最省寄存器</li><li>独热码（One-hot）：每状态一个 FF，组合逻辑简单，速度快</li><li>格雷码：相邻状态仅一位变化，低功耗</li></ul><h4>设计建议</h4><ul><li>三段式写法：组合逻辑次态 + 时序逻辑现态 + 组合逻辑输出</li><li>default 分支避免 latch</li><li>独热码在 FPGA 中常用，ASIC 中根据面积/速度权衡</li></ul>' },
+  { id:20, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'格雷码与二进制计数器', subtitle:'Gray Code', detail:'<h4>格雷码特性</h4><ul><li>相邻数值之间仅有一位变化</li><li>消除多 bit 同时翻转的竞争冒险</li><li>常用于异步 FIFO 的指针传递</li></ul><h4>二进制转格雷码</h4><ul><li>gray = binary ^ (binary >> 1)</li><li>例：binary 3 (011) → gray = 011 ^ 001 = 010</li></ul><h4>应用场景</h4><ul><li>异步 FIFO 读写指针跨时钟域传递</li><li>状态机编码（低功耗）</li><li>需要无毛刺转换的编码器</li></ul><h4>注意事项</h4><ul><li>格雷码不是权重码，不能直接做算术运算</li><li>格雷码计数器需要专门的转换逻辑</li><li>FIFO 中格雷码指针经过两级同步器后再转回二进制比较</li></ul>' },
+  { id:21, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'时钟偏斜与抖动', subtitle:'Clock Skew / Jitter', detail:'<h4>时钟偏斜 Skew</h4><ul><li>同一时钟到达不同寄存器的时间差（空间差异）</li><li>原因：时钟树路径长度不同、PVT 差异</li><li>正偏斜：有助于 hold 收敛，但恶化 setup</li><li>负偏斜：有助于 setup 收敛，但恶化 hold</li></ul><h4>时钟抖动 Jitter</h4><ul><li>时钟周期在时间轴上的波动（时间差异）</li><li>周期抖动：相邻周期的时间差</li><li>相位抖动：长期累积的相位偏移</li><li>来源：PLL 噪声、电源噪声、温度变化</li></ul><h4>对时序的影响</h4><ul><li>Skew 直接影响 setup/hold 时序裕量</li><li>Jitter 在高频设计中压缩有效时钟周期</li><li>设计时需预留 jitter margin</li></ul>' },
+  { id:22, cat:'digital', tag:'数字IC基础', tagClass:'tag-digital', title:'多周期路径与伪路径', subtitle:'Multi-cycle Path / False Path', detail:'<h4>多周期路径</h4><ul><li>数据不需要在一个周期内到达目的寄存器</li><li>需要 SDC 约束声明：set_multicycle_path</li><li>典型场景：慢速外设访问、跨时钟域数据同步</li><li>Setup 放宽到 N 个周期，Hold 默认为 N-1 个周期</li></ul><h4>伪路径 False Path</h4><ul><li>在功能上不可能发生的路径，STA 不应分析</li><li>需要 SDC 约束声明：set_false_path</li><li>典型场景：异步时钟域之间、测试模式路径、复位后不再使用的路径</li></ul><h4>区别</h4><ul><li>多周期路径：数据需要传递，但时间更宽裕</li><li>伪路径：数据根本不会沿该路径传递</li><li>错误标记可能导致功能故障</li></ul><h4>约束示例</h4><ul><li>set_multicycle_path -setup 2 -from [get_clocks clk1] -to [get_clocks clk2]</li><li>set_false_path -from [get_clocks clk1] -to [get_clocks clk2]</li></ul>' },
 ];
 
 // ============================================================
@@ -493,8 +570,17 @@ function renameCat(oldName, newName) {
 // ============================================================
 // USER MANAGEMENT
 // ============================================================
-function getUsers() { try { return JSON.parse(localStorage.getItem('ic_users') || '{}'); } catch(e) { return {}; } }
+// Users: [{ systemId: 10001, id: "chuchu_ic", displayName: "小王", passwordHash: "...", avatar: null, createdAt: 1724227200000 }]
+function getUsers() { try { const d = JSON.parse(localStorage.getItem('ic_users') || '[]'); return Array.isArray(d) ? d : []; } catch(e) { return []; } }
 function saveUsers(u) { localStorage.setItem('ic_users', JSON.stringify(u)); }
+function generateSystemId() {
+  const users = getUsers();
+  let maxId = 10000;
+  users.forEach(u => { if (u.systemId > maxId) maxId = u.systemId; });
+  return maxId + 1;
+}
+function findUserById(id) { return getUsers().find(u => u.id === id); }
+function findUsersByDisplayName(name) { return getUsers().filter(u => u.displayName === name); }
 
 async function hash(str) {
   // Try native SHA-256 (secure context only)
@@ -525,41 +611,83 @@ function oldHash(str) {
 }
 
 async function doRegister() {
-  const u = document.getElementById('regUser').value.trim();
+  const userId = document.getElementById('regUser').value.trim().toLowerCase();
+  const displayName = document.getElementById('regDisplayName').value.trim();
   const p = document.getElementById('regPass').value;
   const p2 = document.getElementById('regPass2').value;
   const err = document.getElementById('regError');
   err.classList.remove('show');
-  if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]{3,20}$/.test(u)) { err.textContent = '用户名 3-20 位字母数字或中文'; err.classList.add('show'); return; }
+  if (!/^[a-z0-9_]{6,20}$/.test(userId)) { err.textContent = 'ID 需 6-20 位小写字母、数字或下划线'; err.classList.add('show'); return; }
+  if (!displayName || displayName.length < 1 || displayName.length > 20) { err.textContent = '显示名 1-20 位'; err.classList.add('show'); return; }
   if (p.length < 6) { err.textContent = '密码至少 6 位'; err.classList.add('show'); return; }
   if (p !== p2) { err.textContent = '两次密码不一致'; err.classList.add('show'); return; }
   const users = getUsers();
-  if (users[u]) { err.textContent = '用户名已存在'; err.classList.add('show'); return; }
-  users[u] = await hash(p);
+  if (users.find(u => u.id === userId)) { err.textContent = '该 ID 已被使用'; err.classList.add('show'); return; }
+  users.push({
+    systemId: generateSystemId(),
+    id: userId,
+    displayName: displayName,
+    passwordHash: await hash(p),
+    avatar: null,
+    createdAt: Date.now()
+  });
   saveUsers(users);
   alert('注册成功！请登录');
   switchAuth('login');
-  document.getElementById('loginUser').value = u;
+  document.getElementById('loginUser').value = userId;
 }
 
 async function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
+  const input = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
   const err = document.getElementById('loginError');
   err.classList.remove('show');
   const users = getUsers();
-  if (!users[u]) { err.classList.add('show'); return; }
   const newHash = await hash(p);
-  if (users[u] === newHash) {
-    // New hash matches
-  } else if (users[u] === oldHash(p)) {
-    // Old hash matches, upgrade to new
-    users[u] = newHash;
-    saveUsers(users);
-  } else {
+  // Try to find user by ID first, then by display name
+  let matches = users.filter(u => u.id === input || u.displayName === input);
+  if (matches.length === 0) {
+    // Check old format (migration)
+    const oldUsers = legacyGetUsers();
+    if (oldUsers[input] && (oldUsers[input] === newHash || oldUsers[input] === oldHash(p))) {
+      // Migrate old user
+      const nu = { systemId: generateSystemId(), id: input.toLowerCase().replace(/[^a-z0-9_]/g,'_').substring(0,20) || 'user_' + Date.now().toString(36), displayName: input, passwordHash: newHash, avatar: null, createdAt: Date.now() };
+      users.push(nu);
+      saveUsers(users);
+      // Migrate old data
+      const oldData = localStorage.getItem('ic_data_' + input);
+      if (oldData) { localStorage.setItem('ic_data_' + nu.systemId, oldData); localStorage.removeItem('ic_data_' + input); }
+      // Remove old user entry
+      delete oldUsers[input];
+      localStorage.setItem('ic_users_legacy', JSON.stringify(oldUsers));
+      currentUser = nu;
+      loadUserData();
+      clearAuthForms();
+      updateHeader();
+      showView('dash');
+      switchDashTab('knowledge');
+      return;
+    }
     err.classList.add('show'); return;
   }
-  currentUser = { username: u };
+  // Filter by password
+  let found = null;
+  for (const u of matches) {
+    if (u.passwordHash === newHash) { found = u; break; }
+    if (u.passwordHash === oldHash(p)) { u.passwordHash = newHash; saveUsers(users); found = u; break; }
+  }
+  if (!found) { err.classList.add('show'); return; }
+  // Multiple matches with same password? Let user pick
+  const pwMatches = matches.filter(u => u.passwordHash === newHash || u.passwordHash === oldHash(p));
+  if (pwMatches.length > 1 && !window._loginPick) {
+    let list = '';
+    pwMatches.forEach((u,i) => { list += '\n[' + (i+1) + '] ' + u.displayName + ' (ID: ' + u.id + ')'; });
+    const pick = prompt('找到多个匹配账号，请选择序号：' + list, '1');
+    const idx = parseInt(pick) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= pwMatches.length) { err.textContent = '选择无效'; err.classList.add('show'); return; }
+    found = pwMatches[idx];
+  }
+  currentUser = found;
   loadUserData();
   clearAuthForms();
   updateHeader();
@@ -579,12 +707,13 @@ function clearAuthForms() {
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
   document.getElementById('regUser').value = '';
+  document.getElementById('regDisplayName').value = '';
   document.getElementById('regPass').value = '';
   document.getElementById('regPass2').value = '';
 }
 
 function loadUserData() {
-  const key = 'ic_data_' + currentUser.username;
+  const key = 'ic_data_' + currentUser.systemId;
   try {
     const d = JSON.parse(localStorage.getItem(key) || '{}');
     userData.knowledge = d.knowledge || defaultKnowledge();
@@ -599,7 +728,7 @@ function loadUserData() {
 
 function saveUserData() {
   if (!currentUser) return;
-  localStorage.setItem('ic_data_' + currentUser.username, JSON.stringify(userData));
+  localStorage.setItem('ic_data_' + currentUser.systemId, JSON.stringify(userData));
 }
 
 // ============================================================
@@ -618,18 +747,102 @@ function showView(name) {
 
 function updateHeader() {
   const btnLogin = document.getElementById('btnLogin');
-  const btnLogout = document.getElementById('btnLogout');
   const headerUser = document.getElementById('headerUser');
   if (currentUser) {
     btnLogin.style.display = 'none';
-    btnLogout.style.display = '';
+    document.getElementById('themeBtn').style.display = 'none';
     headerUser.style.display = '';
-    headerUser.innerHTML = '<span class="user-badge">👤 ' + currentUser.username + '</span>';
+    const avatar = currentUser.avatar;
+    let avatarHtml = '';
+    if (avatar) {
+      if (avatar.startsWith('data:') || avatar.startsWith('http')) {
+        avatarHtml = '<img class="avatar-img" src="' + avatar + '">';
+      } else {
+        avatarHtml = '<span style="font-size:1.2rem;vertical-align:middle;margin-right:3px">' + avatar + '</span>';
+      }
+    } else {
+      avatarHtml = '<svg class="avatar-img" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#d1d5db"/><circle cx="50" cy="38" r="16" fill="#9ca3af"/><ellipse cx="50" cy="82" rx="26" ry="18" fill="#9ca3af"/></svg>';
+    }
+    document.getElementById('headerUserName').textContent = currentUser.displayName;
+    document.querySelector('#headerUser .user-badge').innerHTML = avatarHtml + ' <span id="headerUserName">' + currentUser.displayName + '</span> ▾';
   } else {
     btnLogin.style.display = '';
-    btnLogout.style.display = 'none';
+    document.getElementById('themeBtn').style.display = '';
     headerUser.style.display = 'none';
   }
+}
+
+function toggleUserMenu() {
+  document.getElementById('userDropdown').classList.toggle('show');
+}
+function hideUserMenu() {
+  document.getElementById('userDropdown').classList.remove('show');
+}
+document.addEventListener('click', hideUserMenu);
+
+// ============================================================
+// AVATAR
+// ============================================================
+const AVATAR_EMOJIS = ['😀','😎','🤓','🧑‍💻','🦸','🐱','🐶','🦊','🐼','🐨','🐸','🦉','🦅','🐉','🌵','🍕','🎮','🚀','💻','🔧','⚡','🔥','💡','🎯','🏆','💎','🌟','🌈','🎨','🧩','🤖','👾'];
+let avatarPreview = null;
+let avatarTab = 'emoji';
+
+function openAvatarModal() {
+  document.getElementById('avatarOverlay').classList.remove('hidden');
+  avatarPreview = userData.avatar || null;
+  switchAvatarTab('emoji');
+  renderEmojiGrid();
+}
+
+function closeAvatarModal() {
+  document.getElementById('avatarOverlay').classList.add('hidden');
+  avatarPreview = null;
+}
+
+function switchAvatarTab(tab) {
+  avatarTab = tab;
+  ['emoji','url','upload'].forEach(t => {
+    document.getElementById('av'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab ? '' : 'none';
+    const btn = document.getElementById('avTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if (btn) { btn.style.background = t===tab ? 'var(--accent)' : ''; btn.style.color = t===tab ? '#000' : ''; btn.style.borderColor = t===tab ? 'var(--accent)' : ''; }
+  });
+  if (tab === 'emoji') renderEmojiGrid();
+}
+
+function renderEmojiGrid() {
+  const grid = document.getElementById('emojiGrid');
+  grid.innerHTML = AVATAR_EMOJIS.map(e =>
+    '<div class="emoji-item' + (avatarPreview === e ? ' selected' : '') + '" onclick="selectEmoji(\'' + e + '\')">' + e + '</div>'
+  ).join('');
+}
+
+function selectEmoji(emoji) {
+  avatarPreview = emoji;
+  renderEmojiGrid();
+}
+
+function previewAvatarFile() {
+  const file = document.getElementById('avFileInput').files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    avatarPreview = e.target.result;
+    document.getElementById('avFilePreview').innerHTML = '<img class="av-preview" src="' + avatarPreview + '">';
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveAvatar() {
+  if (avatarTab === 'url') {
+    const url = document.getElementById('avUrlInput').value.trim();
+    if (url) avatarPreview = url;
+  }
+  currentUser.avatar = avatarPreview;
+  const users = getUsers();
+  const idx = users.findIndex(u => u.systemId === currentUser.systemId);
+  if (idx >= 0) { users[idx].avatar = avatarPreview; saveUsers(users); }
+  updateHeader();
+  closeAvatarModal();
 }
 
 function switchAuth(mode) {
@@ -658,12 +871,16 @@ function toggleTheme() {
 // ============================================================
 let publicCat = 'all';
 function renderPublic() {
+  // Show hero only when not logged in
+  const hero = document.getElementById('homeHero');
+  if (hero) hero.style.display = currentUser ? 'none' : 'block';
+
   const cats = [
     { key:'all', label:'全部' }, { key:'verilog', label:'Verilog' },
-    { key:'bus', label:'总线' }, { key:'other', label:'通用' }
+    { key:'digital', label:'数字IC基础' }, { key:'bus', label:'总线' }, { key:'other', label:'通用' }
   ];
   let items = publicCat === 'all' ? publicKnowledge : publicKnowledge.filter(i => i.cat === publicCat);
-  document.getElementById('publicSummary').textContent = '📖 公开知识 · 共 ' + items.length + ' 条';
+  document.getElementById('publicSummary').textContent = '📖 通用知识库 · 共 ' + items.length + ' 条';
   let fhtml = '';
   cats.forEach(c => { fhtml += '<button class="filter-chip' + (publicCat === c.key ? ' active' : '') + '" onclick="publicCat=\'' + c.key + '\';renderPublic()">' + c.label + '</button>'; });
   document.getElementById('publicFilter').innerHTML = fhtml;
@@ -914,6 +1131,34 @@ function deleteCategory(name) {
   renderDashboard();
 }
 
+// Legacy user migration support
+function legacyGetUsers() { try { return JSON.parse(localStorage.getItem('ic_users') || '{}'); } catch(e) { return {}; } }
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function openSettingsModal() {
+  document.getElementById('settingsOverlay').classList.remove('hidden');
+  document.getElementById('settingsId').value = currentUser.id;
+  document.getElementById('settingsName').value = currentUser.displayName;
+  document.getElementById('settingsSysId').value = currentUser.systemId;
+}
+
+function closeSettingsModal() {
+  document.getElementById('settingsOverlay').classList.add('hidden');
+}
+
+function saveSettings() {
+  const newName = document.getElementById('settingsName').value.trim();
+  if (!newName || newName.length > 20) { alert('显示名 1-20 位'); return; }
+  currentUser.displayName = newName;
+  const users = getUsers();
+  const idx = users.findIndex(u => u.systemId === currentUser.systemId);
+  if (idx >= 0) { users[idx].displayName = newName; saveUsers(users); }
+  updateHeader();
+  closeSettingsModal();
+}
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -936,10 +1181,11 @@ function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
   const sess = sessionStorage.getItem('ic_session');
   if (sess) {
     try {
-      const u = JSON.parse(sess);
+      const s = JSON.parse(sess);
       const users = getUsers();
-      if (u && users[u.username]) {
-        currentUser = u;
+      const found = users.find(u => u.systemId === s.systemId);
+      if (found) {
+        currentUser = found;
         loadUserData();
         updateHeader();
         showView('dash');
@@ -956,7 +1202,7 @@ function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 const origLogin = doLogin;
 doLogin = async function() {
   await origLogin();
-  if (currentUser) sessionStorage.setItem('ic_session', JSON.stringify({ username: currentUser.username }));
+  if (currentUser) sessionStorage.setItem('ic_session', JSON.stringify({ systemId: currentUser.systemId }));
 };
 
 // Clear session on logout
