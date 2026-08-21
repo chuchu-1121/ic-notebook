@@ -809,7 +809,6 @@ function saveUserData() {
 // VIEW NAVIGATION
 // ============================================================
 function showView(name) {
-  alert('showView: ' + name + ' currentUser=' + (currentUser ? currentUser.displayName : 'null'));
   currentView = name;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const v = document.getElementById('view-' + name);
@@ -817,7 +816,7 @@ function showView(name) {
   updateHeader();
   if (name === 'home') { renderPublic(); }
   if (name === 'auth') { document.getElementById('loginUser').focus(); }
-  if (name === 'dash') renderDashboard();
+  if (name === 'dash') { try { renderDashboard(); } catch(e) { alert('Dashboard error: ' + e.message + '\n' + e.stack); } }
 }
 
 function updateHeader() {
