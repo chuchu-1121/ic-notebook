@@ -606,7 +606,7 @@ let currentView = 'home';
 let dashTab = 'knowledge';
 let dashCat = 'all';
 let currentUser = null; // { username }
-let userData = {}; // { knowledge: [], projects: [], flashcards: [], knowledgeCats: [], flashcardCats: [] }
+let userData = { knowledge: [], projects: [], flashcards: [], knowledgeCats: ['默认分组'], flashcardCats: ['默认分组'], syncedPublicIds: [] };
 let editingId = null;
 
 // Get categories for current tab
@@ -756,7 +756,7 @@ async function doLogin() {
 
 function doLogout() {
   currentUser = null;
-  userData = {};
+  userData = { knowledge: [], projects: [], flashcards: [], knowledgeCats: ['默认分组'], flashcardCats: ['默认分组'], syncedPublicIds: [] };
   clearAuthForms();
   updateHeader();
   showView('home');
