@@ -729,11 +729,15 @@ async function doLogin() {
       delete oldUsers[input];
       localStorage.setItem('ic_users_legacy', JSON.stringify(oldUsers));
       currentUser = nu;
-      loadUserData();
-      clearAuthForms();
-      updateHeader();
-      showView('dash');
-      switchDashTab('knowledge');
+      try {
+        loadUserData();
+        clearAuthForms();
+        updateHeader();
+        showView('dash');
+        switchDashTab('knowledge');
+      } catch(e) {
+        alert('Migration error: ' + e.message);
+      }
       return;
     }
     err.classList.add('show'); return;
@@ -747,11 +751,15 @@ async function doLogin() {
     err.classList.add('show'); return;
   }
   currentUser = u;
-  loadUserData();
-  clearAuthForms();
-  updateHeader();
-  showView('dash');
-  switchDashTab('knowledge');
+  try {
+    loadUserData();
+    clearAuthForms();
+    updateHeader();
+    showView('dash');
+    switchDashTab('knowledge');
+  } catch(e) {
+    alert('Login error: ' + e.message);
+  }
 }
 
 function doLogout() {
