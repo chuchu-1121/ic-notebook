@@ -542,6 +542,7 @@ body {
   </div>
 </div>
 
+<div id="debugPanel" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.9);color:#0f0;font-family:monospace;font-size:11px;padding:6px 12px;z-index:9999;max-height:80px;overflow-y:auto"></div>
 <div class="footer">IC Notebook · 个人知识管理 & 面试备战工具</div>
 
 <script>
@@ -772,6 +773,7 @@ function clearAuthForms() {
 }
 
 function loadUserData() {
+  dlog('loadUserData: systemId=' + (currentUser ? currentUser.systemId : 'null'));
   const key = 'ic_data_' + currentUser.systemId;
   try {
     const d = JSON.parse(localStorage.getItem(key) || '{}');
@@ -808,8 +810,14 @@ function saveUserData() {
 // ============================================================
 // VIEW NAVIGATION
 // ============================================================
+function dlog(msg) {
+  var p = document.getElementById('debugPanel');
+  if (p) p.innerHTML += msg + '<br>';
+  console.log(msg);
+}
+
 function showView(name) {
-  alert('showView called with: ' + name);
+  dlog('showView: ' + name + ' currentUser=' + (currentUser ? currentUser.displayName : 'null') + ' udKnow=' + (userData.knowledge ? userData.knowledge.length : 'undef'));
   currentView = name;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const v = document.getElementById('view-' + name);
@@ -1013,8 +1021,9 @@ function switchDashTab(tab) {
 }
 
 function renderDashboard() {
+  dlog('renderDashboard: dashTab=' + dashTab + ' udKnow=' + (userData.knowledge ? userData.knowledge.length : 'undef') + ' udCats=' + (userData.knowledgeCats ? userData.knowledgeCats.join(',') : 'undef'));
   const dc = document.getElementById('dashContent');
-  if (!dc) { alert('dashContent not found!'); return; }
+  if (!dc) { dlog('ERROR: dashContent not found!'); return; }
   const query = (document.getElementById('dashSearch')?.value || '').toLowerCase().trim();
   const cats = getCats();
 
